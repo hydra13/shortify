@@ -42,3 +42,18 @@ git fetch template && git checkout template/v2 .github
 - **Clean Architecture**
 - **Hexagonal Architecture**
 - **Layered Architecture**
+
+## Запросы для тестирования
+
+### Запрос создания сокращённого URL
+
+```sh
+curl -v -X POST http://localhost:8080/ \
+    -H "Content-Type: text/plain" \
+    -d "https://ya.ru"
+```
+
+### Запрос переадресации на оригинальный URL
+```sh
+curl -v http://localhost:8080/{xxx}
+```
