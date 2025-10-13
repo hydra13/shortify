@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/hydra13/shortify/internal/handler"
-	db "github.com/hydra13/shortify/internal/repository/inmemory_db"
+	handler "github.com/hydra13/shortify/internal/handlers"
+	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 )
 
 func main() {

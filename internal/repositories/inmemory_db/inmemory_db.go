@@ -1,7 +1,7 @@
 package inmemorydb
 
 import (
-	"github.com/hydra13/shortify/internal/repository"
+	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
 type InMemoryDB struct {

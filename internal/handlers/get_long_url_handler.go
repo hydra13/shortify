@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/hydra13/shortify/internal/config"
-	repo "github.com/hydra13/shortify/internal/repository"
+	repo "github.com/hydra13/shortify/internal/repositories"
 )
 
 func CreateGetLongURLHandler(repository repo.Repository) http.HandlerFunc {

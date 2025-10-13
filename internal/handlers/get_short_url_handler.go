@@ -5,17 +5,17 @@ import (
 	"io"
 	"net/http"
 
-	repo "github.com/hydra13/shortify/internal/repository"
-	generator "github.com/hydra13/shortify/internal/service/short_id_generator"
+	repo "github.com/hydra13/shortify/internal/repositories"
+	generator "github.com/hydra13/shortify/internal/services/short_id_generator"
 )
 
 func CreateGetShortURLHandler(repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "text/plain" {
-			fmt.Printf("Incorrect content type in request: %v\n", r.Header.Get("Content-Type"))
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		// if r.Header.Get("Content-Type") != "text/plain" {
+		// 	fmt.Printf("Incorrect content type in request: %v\n", r.Header.Get("Content-Type"))
+		// 	w.WriteHeader(http.StatusBadRequest)
+		// 	return
+		// }
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
