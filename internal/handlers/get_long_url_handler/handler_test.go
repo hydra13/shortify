@@ -1,4 +1,4 @@
-package get_long_url_handler
+package getlongurlhandler
 
 import (
 	"net/http"
@@ -83,6 +83,7 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 			handler.ServeHTTP(w, request)
 
 			res := w.Result()
+			defer res.Body.Close()
 
 			assert.Equal(t, tt.want.code, res.StatusCode)
 

@@ -1,4 +1,4 @@
-package get_short_url_handler
+package getshorturlhandler
 
 import (
 	"io"

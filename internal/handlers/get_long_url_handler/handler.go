@@ -1,4 +1,4 @@
-package get_long_url_handler
+package getlongurlhandler
 
 import (
 	"fmt"
