@@ -6,10 +6,13 @@ import (
 	"net/http"
 
 	repo "github.com/hydra13/shortify/internal/repositories"
-	generator "github.com/hydra13/shortify/internal/services/short_id_generator"
 )
 
-func CreateHandler(repository repo.Repository) http.HandlerFunc {
+type Generator interface {
+	GenerateShortID(url string) string
+}
+
+func CreateHandler(repository repo.Repository, generator Generator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

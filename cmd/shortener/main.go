@@ -6,13 +6,16 @@ import (
 	getLongUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	getShortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
 	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
+	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 )
 
 func main() {
 	repo := db.New()
+	generator := gen.Generator{}
+
 	mux := http.NewServeMux()
 
-	getShortURLHandler := getShortUrlHandler.CreateHandler(repo)
+	getShortURLHandler := getShortUrlHandler.CreateHandler(repo, generator)
 	getLongURLHandler := getLongUrlHandler.CreateHandler(repo)
 
 	mainHandler := func(w http.ResponseWriter, r *http.Request) {
