@@ -1,4 +1,4 @@
-package handler
+package get_short_url_handler
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	generator "github.com/hydra13/shortify/internal/services/short_id_generator"
 )
 
-func CreateGetShortURLHandler(repository repo.Repository) http.HandlerFunc {
+func CreateHandler(repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

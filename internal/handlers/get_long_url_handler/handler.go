@@ -1,4 +1,4 @@
-package handler
+package get_long_url_handler
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	repo "github.com/hydra13/shortify/internal/repositories"
 )
 
-func CreateGetLongURLHandler(repository repo.Repository) http.HandlerFunc {
+func CreateHandler(repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Длина пути должна быть равна длине ключа + `/`
 		if len(r.URL.Path) != config.KeyLength+1 {
