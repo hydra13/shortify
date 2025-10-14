@@ -32,7 +32,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 
 	dbMock := inmemory_db.New()
 
-	handler := CreateHandler(dbMock, generatorMock)
+	handler := CreateHandler(dbMock, generatorMock, "http://localhost:8080")
 	srv := httptest.NewServer(handler)
 
 	type want struct {
