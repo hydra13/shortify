@@ -21,8 +21,14 @@ func CreateHandler(repository repo.Repository, generator Generator) http.Handler
 			return
 		}
 
-		// Пока осознанно не делаю проверки на то что получен URL
 		url := string(body)
+
+		if !validation(url) {
+			fmt.Printf("Error validation input data: %v\n", url)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		key := generator.GenerateShortID(url)
 		repository.Add(key, url)
 		shortURL := fmt.Sprintf(`http://localhost:8080/%s`, key)
