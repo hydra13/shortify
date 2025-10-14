@@ -12,7 +12,7 @@ type Generator interface {
 	GenerateShortID(url string) string
 }
 
-func CreateHandler(repository repo.Repository, generator Generator, baseUrl string) http.HandlerFunc {
+func CreateHandler(repository repo.Repository, generator Generator, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -31,7 +31,7 @@ func CreateHandler(repository repo.Repository, generator Generator, baseUrl stri
 
 		key := generator.GenerateShortID(url)
 		repository.Add(key, url)
-		shortURL := fmt.Sprintf(`%s/%s`, baseUrl, key)
+		shortURL := fmt.Sprintf(`%s/%s`, baseURL, key)
 
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
