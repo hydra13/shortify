@@ -32,6 +32,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 
 	dbMock := inmemory_db.New()
 
+	handler := CreateHandler(dbMock, generatorMock)
+	srv := httptest.NewServer(handler)
+
 	type want struct {
 		code        int
 		response    string
@@ -84,26 +87,23 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, tt.url, strings.NewReader(tt.input))
-			w := httptest.NewRecorder()
-			handler := CreateHandler(tt.repository, tt.generator)
+			req, err := http.NewRequest(http.MethodPost, srv.URL+tt.url, strings.NewReader(tt.input))
+			require.NoError(t, err)
 
-			handler.ServeHTTP(w, request)
+			resp, err := srv.Client().Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
 
-			res := w.Result()
-
-			assert.Equal(t, tt.want.code, res.StatusCode)
+			assert.Equal(t, tt.want.code, resp.StatusCode)
 
 			if tt.wantErr {
 				return
 			}
 
-			resBody, err := io.ReadAll(res.Body)
-			defer res.Body.Close()
-
+			body, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want.response, string(resBody))
-			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+			assert.Equal(t, tt.want.response, string(body))
+			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
 }
