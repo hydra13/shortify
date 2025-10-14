@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"net/http"
 
@@ -34,10 +33,10 @@ func main() {
 }
 
 func parseFlags() {
-	flag.StringVar(&serverAddr, "addr", ":8080", "server address")
-	flag.Func("base", "result base url (default: \"http://localhost:8080\")", func(url string) error {
+	flag.StringVar(&serverAddr, "a", ":8080", "server address")
+	flag.Func("b", "result base url (default: \"http://localhost:8080\")", func(url string) error {
 		if len(url) == 0 {
-			return errors.New("empty base url")
+			return nil
 		}
 
 		baseURL = url
