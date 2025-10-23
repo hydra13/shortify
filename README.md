@@ -1,6 +1,6 @@
-# go-musthave-shortener-tpl
+# shortify
 
-Шаблон репозитория для трека «Сервис сокращения URL».
+Сервис сокращения URL в рамках обучения Yandex Practicum.
 
 ## Начало работы
 
