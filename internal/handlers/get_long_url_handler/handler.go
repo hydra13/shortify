@@ -1,14 +1,18 @@
 package getlongurlhandler
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/hydra13/shortify/internal/config"
-	repo "github.com/hydra13/shortify/internal/repositories"
 )
 
-func CreateHandler(repository repo.Repository) http.HandlerFunc {
+type UrlsKeeper interface {
+	Get(ctx context.Context, shortURL string) (url string, found bool, err error)
+}
+
+func CreateHandler(urlsKeeper UrlsKeeper) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Длина пути должна быть равна длине ключа + `/`
 		if len(r.URL.Path) != config.KeyLength+1 {
@@ -18,16 +22,18 @@ func CreateHandler(repository repo.Repository) http.HandlerFunc {
 		}
 
 		key := r.URL.Path[1:]
-		url, err := repository.Get(key)
+		url, found, err := urlsKeeper.Get(r.Context(), key)
 
 		if err != nil {
-			if err == repo.ErrKeyNotFound {
-				fmt.Printf("Url not found: %v\n", key)
-			} else {
-				fmt.Printf("Error get url from repository: %v\n", err)
-			}
+			fmt.Printf("Error get url from repository: %v\n", err)
 
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if !found {
+			fmt.Printf("Url not found: %v\n", key)
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 

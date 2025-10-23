@@ -1,6 +1,8 @@
 package getshorturlhandler
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,9 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	repo "github.com/hydra13/shortify/internal/repositories"
-	inmemory_db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 )
 
 type GeneratorMock struct {
@@ -24,15 +23,25 @@ func (g GeneratorMock) GenerateShortID(in string) string {
 	return "testing1"
 }
 
+type KeeperMock struct{}
+
+func (k KeeperMock) Save(_ context.Context, originalURL string, shortURL string) error {
+	if originalURL == "errorTst" {
+		return errors.New("error")
+	}
+
+	return nil
+}
+
 func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 	generatorMock := GeneratorMock{
 		wantInput: "https://ya.ru",
 		t:         t,
 	}
 
-	dbMock := inmemory_db.New()
+	keeper := KeeperMock{}
 
-	handler := CreateHandler(dbMock, generatorMock, "http://localhost:8080")
+	handler := CreateHandler(keeper, generatorMock, "http://localhost:8080")
 	srv := httptest.NewServer(handler)
 
 	type want struct {
@@ -45,7 +54,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 		name       string
 		url        string
 		input      string
-		repository repo.Repository
+		urlsKeeper UrlsKeeper
 		generator  Generator
 		want       want
 		wantErr    bool
@@ -54,7 +63,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			name:       "Success",
 			url:        "/testing1",
 			input:      "https://ya.ru",
-			repository: dbMock,
+			urlsKeeper: keeper,
 			generator:  generatorMock,
 			want: want{
 				code:        http.StatusCreated,
@@ -66,7 +75,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			name:       "Error when body is empty",
 			input:      "",
 			url:        "/",
-			repository: dbMock,
+			urlsKeeper: keeper,
 			generator:  generatorMock,
 			want: want{
 				code: http.StatusBadRequest,
@@ -77,7 +86,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			name:       "Error when input is not url",
 			input:      "not-url",
 			url:        "/",
-			repository: dbMock,
+			urlsKeeper: keeper,
 			generator:  generatorMock,
 			want: want{
 				code: http.StatusBadRequest,

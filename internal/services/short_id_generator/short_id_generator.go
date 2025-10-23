@@ -11,6 +11,10 @@ import (
 
 type Generator struct{}
 
+func New() *Generator {
+	return &Generator{}
+}
+
 func (g Generator) GenerateShortID(url string) string {
 	hash := sha256.Sum256([]byte(fmt.Sprintf("%v-%v", url, time.Now())))
 	encoded := base64.URLEncoding.EncodeToString(hash[:])

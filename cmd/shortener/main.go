@@ -10,6 +10,7 @@ import (
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
 	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
+	urlsKeeper "github.com/hydra13/shortify/internal/services/urls_keeper"
 )
 
 var serverAddr string
@@ -19,10 +20,12 @@ func main() {
 	parseFlags()
 
 	repo := db.New()
-	generator := gen.Generator{}
+	generator := gen.New()
 
-	getShortURLHandler := shortUrlHandler.CreateHandler(repo, generator, baseURL)
-	getLongURLHandler := longUrlHandler.CreateHandler(repo)
+	uk := urlsKeeper.New(repo)
+
+	getShortURLHandler := shortUrlHandler.CreateHandler(uk, generator, baseURL)
+	getLongURLHandler := longUrlHandler.CreateHandler(uk)
 
 	r := chi.NewRouter()
 

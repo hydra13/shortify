@@ -1,21 +1,31 @@
 package getlongurlhandler
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	repo "github.com/hydra13/shortify/internal/repositories"
-	inmemory_db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 )
 
-func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
-	repository := inmemory_db.New()
-	repository.Add("testing1", "https://ya.ru")
+type KeeperMock struct{}
 
-	repositoryErr := &repo.RepositoryErrorMock{}
+func (k KeeperMock) Get(_ context.Context, shortURL string) (string, bool, error) {
+	if shortURL == "testing1" {
+		return "https://ya.ru", true, nil
+	}
+
+	if shortURL == "errorTst" {
+		return "", false, errors.New("error")
+	}
+
+	return "", false, nil
+}
+
+func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
+	keeperMock := &KeeperMock{}
 
 	type want struct {
 		code     int
@@ -23,53 +33,47 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		url        string
-		repository repo.Repository
-		want       want
+		name string
+		url  string
+		want want
 	}{
 		{
-			name:       "Success",
-			url:        "/testing1",
-			repository: repository,
+			name: "Success",
+			url:  "/testing1",
 			want: want{
 				code:     http.StatusTemporaryRedirect,
 				location: `https://ya.ru`,
 			},
 		},
 		{
-			name:       "Error - key length greater than in config",
-			url:        "/testing1-testing-long-query",
-			repository: repository,
+			name: "Error - key length greater than in config",
+			url:  "/testing1-testing-long-query",
 			want: want{
 				code:     http.StatusBadRequest,
 				location: "",
 			},
 		},
 		{
-			name:       "Error - key length less than in config",
-			url:        "/t",
-			repository: repository,
+			name: "Error - key length less than in config",
+			url:  "/t",
 			want: want{
 				code:     http.StatusBadRequest,
 				location: "",
 			},
 		},
 		{
-			name:       "Error - key not found",
-			url:        "/testing2",
-			repository: repository,
+			name: "Error - key not found",
+			url:  "/testing2",
 			want: want{
-				code:     http.StatusBadRequest,
+				code:     http.StatusNotFound,
 				location: "",
 			},
 		},
 		{
-			name:       "Error - during get value from repository",
-			url:        "/testing1",
-			repository: repositoryErr,
+			name: "Error - during get value from repository",
+			url:  "/errorTst",
 			want: want{
-				code:     http.StatusBadRequest,
+				code:     http.StatusInternalServerError,
 				location: "",
 			},
 		},
@@ -78,7 +82,7 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, tt.url, nil)
 			w := httptest.NewRecorder()
-			handler := CreateHandler(tt.repository)
+			handler := CreateHandler(keeperMock)
 
 			handler.ServeHTTP(w, request)
 
