@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 
@@ -18,6 +19,7 @@ var baseURL string = "http://localhost:8080"
 
 func main() {
 	parseFlags()
+	parseEnv()
 
 	repo := db.New()
 	generator := gen.New()
@@ -52,4 +54,14 @@ func parseFlags() {
 	})
 
 	flag.Parse()
+}
+
+func parseEnv() {
+	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
+		serverAddr = addr
+	}
+
+	if url, ok := os.LookupEnv("BASE_URL"); ok {
+		baseURL = url
+	}
 }
