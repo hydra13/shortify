@@ -9,6 +9,7 @@ import (
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
+	"github.com/hydra13/shortify/internal/logger"
 	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	urlsKeeper "github.com/hydra13/shortify/internal/services/urls_keeper"
@@ -30,6 +31,8 @@ func main() {
 	getLongURLHandler := longUrlHandler.CreateHandler(uk)
 
 	r := chi.NewRouter()
+
+	r.Use(logger.LoggerMiddleware)
 
 	r.Post("/", getShortURLHandler)
 	r.Get("/{id}", getLongURLHandler)
