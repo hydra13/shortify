@@ -5,8 +5,10 @@ import (
 	"errors"
 )
 
-var ErrKeyNotFound = errors.New("error: key not found")
-var ErrImplementation = errors.New("error: not implemented")
+var (
+	ErrKeyNotFound    = errors.New("error: key not found")
+	ErrImplementation = errors.New("error: not implemented")
+)
 
 type Repository interface {
 	Add(ctx context.Context, key string, value string) error
@@ -19,6 +21,7 @@ type RepositoryErrorMock struct{}
 func (e *RepositoryErrorMock) Add(context.Context, string, string) error {
 	return ErrImplementation
 }
+
 func (e *RepositoryErrorMock) Get(context.Context, string) (string, error) {
 	return "", ErrImplementation
 }

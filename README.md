@@ -53,6 +53,12 @@ curl -v -X POST http://localhost:8080/ \
     -d "https://ya.ru"
 ```
 
+```sh
+curl -v -X POST http://localhost:8080/api/shorten \
+    -H "Content-Type: application/json" \
+    -d '{"url":"https://ya.ru"}'
+```
+
 ### Запрос переадресации на оригинальный URL
 ```sh
 curl -v http://localhost:8080/{xxx}

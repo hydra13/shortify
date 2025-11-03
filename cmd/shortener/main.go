@@ -8,15 +8,20 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
+	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
 	"github.com/hydra13/shortify/internal/logger"
 	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
+	shorter "github.com/hydra13/shortify/internal/services/shorter"
+	validator "github.com/hydra13/shortify/internal/services/url_validator"
 	urlsKeeper "github.com/hydra13/shortify/internal/services/urls_keeper"
 )
 
-var serverAddr string
-var baseURL string = "http://localhost:8080"
+var (
+	serverAddr string
+	baseURL    string = "http://localhost:8080"
+)
 
 func main() {
 	parseFlags()
@@ -24,11 +29,13 @@ func main() {
 
 	repo := db.New()
 	generator := gen.New()
-
+	urlValidator := validator.New()
 	uk := urlsKeeper.New(repo)
+	s := shorter.New(urlValidator, uk, generator, baseURL)
 
-	getShortURLHandler := shortUrlHandler.CreateHandler(uk, generator, baseURL)
 	getLongURLHandler := longUrlHandler.CreateHandler(uk)
+	getShortURLHandler := shortUrlHandler.CreateHandler(s, baseURL)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, baseURL)
 
 	r := chi.NewRouter()
 
@@ -36,6 +43,10 @@ func main() {
 
 	r.Post("/", getShortURLHandler)
 	r.Get("/{id}", getLongURLHandler)
+
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", getShortURLbyJSONHandler)
+	})
 
 	http.ListenAndServe(serverAddr, r)
 }

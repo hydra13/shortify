@@ -1,4 +1,4 @@
-package getshorturlhandler
+package getshorturlbyjsonhandler
 
 import (
 	"context"
@@ -45,18 +45,18 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 	}{
 		{
 			name:  "Success",
-			url:   "/testing1",
-			input: "https://ya.ru",
+			url:   "/api/shorten",
+			input: `{"url":"https://ya.ru"}`,
 			want: want{
 				code:        http.StatusCreated,
-				response:    `http://localhost:8080/testing1`,
-				contentType: "text/plain",
+				response:    "{\"result\":\"http://localhost:8080/testing1\"}\n",
+				contentType: "application/json",
 			},
 		},
 		{
 			name:  "Error when body is empty",
 			input: "",
-			url:   "/",
+			url:   "/api/shorten",
 			want: want{
 				code: http.StatusBadRequest,
 			},
@@ -64,8 +64,8 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 		},
 		{
 			name:  "Error when input is not url",
-			input: "not-url",
-			url:   "/",
+			input: `{"url":"not-url"}`,
+			url:   "/api/shorten",
 			want: want{
 				code: http.StatusBadRequest,
 			},
