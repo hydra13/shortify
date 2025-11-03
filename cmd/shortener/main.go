@@ -10,7 +10,8 @@ import (
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
-	"github.com/hydra13/shortify/internal/logger"
+	"github.com/hydra13/shortify/internal/middlewares/compresser"
+	"github.com/hydra13/shortify/internal/middlewares/logger"
 	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
@@ -39,6 +40,7 @@ func main() {
 
 	r := chi.NewRouter()
 
+	r.Use(compresser.CompresserMiddleware)
 	r.Use(logger.LoggerMiddleware)
 
 	r.Post("/", getShortURLHandler)
