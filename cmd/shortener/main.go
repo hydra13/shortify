@@ -12,7 +12,7 @@ import (
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
-	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
+	db "github.com/hydra13/shortify/internal/repositories/file_storage"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
 	validator "github.com/hydra13/shortify/internal/services/url_validator"
@@ -20,15 +20,16 @@ import (
 )
 
 var (
-	serverAddr string
-	baseURL    string = "http://localhost:8080"
+	serverAddr  string
+	baseURL     string = "http://localhost:8080"
+	fileStorage string = "./storage.json"
 )
 
 func main() {
 	parseFlags()
 	parseEnv()
 
-	repo := db.New()
+	repo := db.New(fileStorage)
 	generator := gen.New()
 	urlValidator := validator.New()
 	uk := urlsKeeper.New(repo)
@@ -55,6 +56,15 @@ func main() {
 
 func parseFlags() {
 	flag.StringVar(&serverAddr, "a", ":8080", "server address")
+	flag.Func("f", "file storage path (default: \"./storage.json\")", func(path string) error {
+		if len(path) == 0 {
+			return nil
+		}
+
+		fileStorage = path
+
+		return nil
+	})
 	flag.Func("b", "result base url (default: \"http://localhost:8080\")", func(url string) error {
 		if len(url) == 0 {
 			return nil
@@ -79,5 +89,9 @@ func parseEnv() {
 
 	if url, ok := os.LookupEnv("BASE_URL"); ok {
 		baseURL = url
+	}
+
+	if filePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
+		fileStorage = filePath
 	}
 }
