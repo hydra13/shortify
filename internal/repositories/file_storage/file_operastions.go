@@ -2,7 +2,6 @@ package filestorage
 
 import (
 	"encoding/json"
-	"io"
 	"os"
 )
 
@@ -14,42 +13,38 @@ func (fs *FileStorage) load() {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	f.Close()
 
-	decoder := json.NewDecoder(f)
-	for {
-		records := make([]*Record, 0)
-		if err := decoder.Decode(&records); err != nil {
-			if err == io.EOF {
-				break
-			}
-			panic(err)
-		}
-
-		fs.values = records
-		for _, record := range records {
-			fs.repository[record.ShortURL] = record
-			if fs.freeID < record.ID+1 {
-				fs.freeID = record.ID + 1
-			}
-
-		}
+	content, err := os.ReadFile(fs.filePath)
+	if err != nil {
+		panic(err)
 	}
 
-	for _, v := range fs.repository {
-		fs.values = append(fs.values, v)
+	if len(content) == 0 {
+		return
+	}
+
+	records := make([]*Record, 0)
+	err = json.Unmarshal(content, &records)
+	if err != nil {
+		panic(err)
+	}
+
+	fs.values = records
+	for _, record := range records {
+		fs.repository[record.ShortURL] = record
+		if fs.freeID < record.ID+1 {
+			fs.freeID = record.ID + 1
+		}
 	}
 }
 
 func (fs *FileStorage) write() {
-	file, err := os.OpenFile(fs.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	bytes, err := json.Marshal(fs.values)
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	err = encoder.Encode(fs.values)
+	err = os.WriteFile(fs.filePath, bytes, 0o644)
 	if err != nil {
 		panic(err)
 	}
