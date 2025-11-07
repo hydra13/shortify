@@ -2,8 +2,9 @@ package getlongurlhandler
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/hydra13/shortify/internal/config"
 )
@@ -16,23 +17,31 @@ func CreateHandler(urlsKeeper UrlsKeeper) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Длина пути должна быть равна длине ключа + `/`
 		if len(r.URL.Path) != config.KeyLength+1 {
-			fmt.Printf("Incorrect request path: %v\n", r.URL.Path)
+			log.Debug().
+				Str("path", r.URL.Path).
+				Msg("Incorrect request path")
+
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		key := r.URL.Path[1:]
 		url, found, err := urlsKeeper.Get(r.Context(), key)
-
 		if err != nil {
-			fmt.Printf("Error get url from repository: %v\n", err)
+			log.Error().
+				Err(err).
+				Str("short_url_key", key).
+				Msg("Error get url from repository")
 
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		if !found {
-			fmt.Printf("Url not found: %v\n", key)
+			log.Debug().
+				Str("short_url_key", key).
+				Msg("Url not found")
+
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
