@@ -27,9 +27,10 @@ func CreateHandler(shorter Shorter, baseURL string) http.HandlerFunc {
 		var req JSONRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			log.Info().
+			log.Debug().
 				Err(err).
 				Msg("GetShortUrlByJsonHandler: error read request body")
+
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -38,15 +39,16 @@ func CreateHandler(shorter Shorter, baseURL string) http.HandlerFunc {
 		if err != nil {
 			switch err {
 			case models.ErrValidation:
-				log.Info().
+				log.Debug().
 					Str("input_url", req.URL).
 					Msg("GetShortUrlByJsonHandler: validation error")
 
 				w.WriteHeader(http.StatusBadRequest)
 			case models.ErrInternal:
-				log.Info().
+				log.Debug().
 					Str("input_url", req.URL).
 					Msg("GetShortUrlByJsonHandler: save url into repository error")
+
 				w.WriteHeader(http.StatusInternalServerError)
 			default:
 				log.Error().

@@ -19,7 +19,7 @@ func CreateHandler(urlsKeeper UrlsKeeper) http.HandlerFunc {
 		if len(r.URL.Path) != config.KeyLength+1 {
 			log.Debug().
 				Str("path", r.URL.Path).
-				Msg("Incorrect request path")
+				Msg("GetLongUrlHandler: incorrect request path")
 
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -31,7 +31,7 @@ func CreateHandler(urlsKeeper UrlsKeeper) http.HandlerFunc {
 			log.Error().
 				Err(err).
 				Str("short_url_key", key).
-				Msg("Error get url from repository")
+				Msg("GetLongUrlHandler: error get url from repository")
 
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -40,7 +40,7 @@ func CreateHandler(urlsKeeper UrlsKeeper) http.HandlerFunc {
 		if !found {
 			log.Debug().
 				Str("short_url_key", key).
-				Msg("Url not found")
+				Msg("GetLongUrlHandler: url not found")
 
 			w.WriteHeader(http.StatusNotFound)
 			return

@@ -3,6 +3,8 @@ package compresser
 import (
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func CompresserMiddleware(next http.Handler) http.Handler {
@@ -18,9 +20,12 @@ func CompresserMiddleware(next http.Handler) http.Handler {
 
 		contentEncoding := r.Header.Get("Content-Encoding")
 		if strings.Contains(contentEncoding, "gzip") {
-			// decompress request body
 			cr, err := newCompressReader(r.Body)
 			if err != nil {
+				log.Error().
+					Err(err).
+					Msg("Error decompress request body")
+
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
