@@ -26,8 +26,7 @@ var (
 )
 
 func main() {
-	parseFlags()
-	parseEnv()
+	parseConfigs()
 
 	repo := db.New(fileStorage)
 	generator := gen.New()
@@ -54,7 +53,7 @@ func main() {
 	http.ListenAndServe(serverAddr, r)
 }
 
-func parseFlags() {
+func parseConfigs() {
 	flag.StringVar(&serverAddr, "a", ":8080", "server address")
 	flag.Func("f", "file storage path (default: \"./storage.json\")", func(path string) error {
 		if len(path) == 0 {
@@ -80,9 +79,7 @@ func parseFlags() {
 	})
 
 	flag.Parse()
-}
 
-func parseEnv() {
 	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
 		serverAddr = addr
 	}
