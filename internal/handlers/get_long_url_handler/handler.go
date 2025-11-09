@@ -1,3 +1,4 @@
+//go:generate minimock -i .UrlsKeeper -o mocks -s _mock.go -g
 package getlongurlhandler
 
 import (

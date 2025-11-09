@@ -1,35 +1,21 @@
 package getshorturlhandler
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gojuno/minimock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hydra13/shortify/internal/handlers/get_short_url_handler/mocks"
 	"github.com/hydra13/shortify/internal/models"
 )
 
-type ShorterMock struct{}
-
-func (s ShorterMock) Create(_ context.Context, long string) (string, error) {
-	if long == "https://ya.ru" {
-		return "http://localhost:8080/testing1", nil
-	}
-
-	return "", models.ErrValidation
-}
-
 func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
-	shorter := &ShorterMock{}
-
-	handler := CreateHandler(shorter, "http://localhost:8080")
-	srv := httptest.NewServer(handler)
-
 	type want struct {
 		code        int
 		response    string
@@ -38,13 +24,20 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 
 	tests := []struct {
 		name    string
+		shorter func(mc *minimock.Controller) Shorter
 		url     string
 		input   string
 		want    want
 		wantErr bool
 	}{
 		{
-			name:  "Success",
+			name: "Success",
+			shorter: func(mc *minimock.Controller) Shorter {
+				return mocks.NewShorterMock(mc).
+					CreateMock.
+					Expect(minimock.AnyContext, "https://ya.ru").
+					Return("http://localhost:8080/testing1", nil)
+			},
 			url:   "/testing1",
 			input: "https://ya.ru",
 			want: want{
@@ -54,7 +47,13 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			},
 		},
 		{
-			name:  "Error when body is empty",
+			name: "Error when body is empty",
+			shorter: func(mc *minimock.Controller) Shorter {
+				return mocks.NewShorterMock(mc).
+					CreateMock.
+					Expect(minimock.AnyContext, "").
+					Return("", models.ErrValidation)
+			},
 			input: "",
 			url:   "/",
 			want: want{
@@ -63,7 +62,13 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:  "Error when input is not url",
+			name: "Error when input is not url",
+			shorter: func(mc *minimock.Controller) Shorter {
+				return mocks.NewShorterMock(mc).
+					CreateMock.
+					Expect(minimock.AnyContext, "not-url").
+					Return("", models.ErrValidation)
+			},
 			input: "not-url",
 			url:   "/",
 			want: want{
@@ -74,6 +79,16 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mc := minimock.NewController(t)
+
+			shorter := tt.shorter(mc)
+			handler := CreateHandler(shorter, "http://localhost:8080")
+
+			srv := httptest.NewServer(handler)
+			defer srv.Close()
+
 			req, err := http.NewRequest(http.MethodPost, srv.URL+tt.url, strings.NewReader(tt.input))
 			require.NoError(t, err)
 

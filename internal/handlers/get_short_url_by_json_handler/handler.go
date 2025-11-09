@@ -1,3 +1,4 @@
+//go:generate minimock -i .Shorter -o mocks -s _mock.go -g
 package getshorturlbyjsonhandler
 
 import (
