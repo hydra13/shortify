@@ -13,7 +13,8 @@ import (
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
-	db "github.com/hydra13/shortify/internal/repositories/file_storage"
+	fsDB "github.com/hydra13/shortify/internal/repositories/file_storage"
+	inMemoryDB "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
 	validator "github.com/hydra13/shortify/internal/services/url_validator"
@@ -30,7 +31,8 @@ func main() {
 	parseConfigs()
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	repo, err := db.New(fileStorage, log)
+	inMemRepo := inMemoryDB.New()
+	repo, err := fsDB.New(fileStorage, inMemRepo, log)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to init repo")
 	}
