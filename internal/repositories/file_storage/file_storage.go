@@ -64,16 +64,14 @@ func (fs *FileStorage) Get(_ context.Context, key string) (string, error) {
 }
 
 func (fs *FileStorage) Delete(_ context.Context, key string) error {
-	fs.mutex.RLock()
+	fs.mutex.Lock()
+	defer fs.mutex.Unlock()
+
 	rec, found := fs.repository[key]
-	fs.mutex.RUnlock()
 
 	if !found {
 		return repository.ErrKeyNotFound
 	}
-
-	fs.mutex.Lock()
-	defer fs.mutex.Unlock()
 
 	delete(fs.repository, key)
 

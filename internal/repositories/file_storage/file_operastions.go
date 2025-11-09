@@ -6,9 +6,6 @@ import (
 )
 
 func (fs *FileStorage) load() error {
-	fs.mutex.Lock()
-	defer fs.mutex.Unlock()
-
 	f, err := os.OpenFile(fs.filePath, os.O_RDONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		fs.log.Error().
@@ -44,6 +41,9 @@ func (fs *FileStorage) load() error {
 			Msg("can't unmarshal file storage")
 		return err
 	}
+
+	fs.mutex.Lock()
+	defer fs.mutex.Unlock()
 
 	fs.values = records
 	for _, record := range records {
