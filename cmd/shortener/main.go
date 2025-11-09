@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
@@ -27,21 +28,26 @@ var (
 
 func main() {
 	parseConfigs()
+	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	repo := db.New(fileStorage)
+	repo, err := db.New(fileStorage, log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to init repo")
+	}
+
 	generator := gen.New()
 	urlValidator := validator.New()
 	uk := urlsKeeper.New(repo)
-	s := shorter.New(urlValidator, uk, generator, baseURL)
+	s := shorter.New(urlValidator, uk, generator, baseURL, log)
 
-	getLongURLHandler := longUrlHandler.CreateHandler(uk)
-	getShortURLHandler := shortUrlHandler.CreateHandler(s, baseURL)
-	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, baseURL)
+	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
+	getShortURLHandler := shortUrlHandler.CreateHandler(s, baseURL, log)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, baseURL, log)
 
 	r := chi.NewRouter()
 
 	r.Use(compresser.CompresserMiddleware)
-	r.Use(logger.LoggerMiddleware)
+	r.Use(logger.NewLoggerMiddleware(log))
 
 	r.Post("/", getShortURLHandler)
 	r.Get("/{id}", getLongURLHandler)

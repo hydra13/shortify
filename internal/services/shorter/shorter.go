@@ -1,10 +1,11 @@
+//go:generate minimock -i .Generator,.UrlsKeeper,.URLValidator -o mocks -s _mock.go -g
 package shorter
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	"github.com/hydra13/shortify/internal/models"
 )
@@ -26,6 +27,7 @@ type Shorter struct {
 	keeper    UrlsKeeper
 	generator Generator
 	baseURL   string
+	log       zerolog.Logger
 }
 
 func New(
@@ -33,12 +35,14 @@ func New(
 	keeper UrlsKeeper,
 	generator Generator,
 	baseURL string,
+	log zerolog.Logger,
 ) *Shorter {
 	return &Shorter{
 		validator: validator,
 		keeper:    keeper,
 		generator: generator,
 		baseURL:   baseURL,
+		log:       log,
 	}
 }
 
@@ -52,7 +56,7 @@ func (s Shorter) Create(ctx context.Context, long string) (string, error) {
 
 	err := s.keeper.Save(ctx, long, shortID)
 	if err != nil {
-		log.Error().
+		s.log.Error().
 			Str("long_url", long).
 			Str("short_url", shortURL).
 			Err(err).

@@ -1,6 +1,7 @@
 package getshorturlbyjsonhandler
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gojuno/minimock/v3"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,6 +18,9 @@ import (
 )
 
 func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
+	var buf bytes.Buffer
+	log := zerolog.New(&buf)
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	type want struct {
 		code        int
 		response    string
@@ -79,7 +84,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 			shorter := tt.shorter(mc)
 
-			handler := CreateHandler(shorter, "http://localhost:8080")
+			handler := CreateHandler(shorter, "http://localhost:8080", log)
 			srv := httptest.NewServer(handler)
 			defer srv.Close()
 
@@ -102,4 +107,5 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

@@ -5,29 +5,44 @@ import (
 	"os"
 )
 
-func (fs *FileStorage) load() {
+func (fs *FileStorage) load() error {
 	fs.mutex.Lock()
 	defer fs.mutex.Unlock()
 
 	f, err := os.OpenFile(fs.filePath, os.O_RDONLY|os.O_CREATE, 0o644)
 	if err != nil {
-		panic(err)
+		fs.log.Error().
+			Err(err).
+			Str("file_path", fs.filePath).
+			Msg("can't open file storage")
+		return err
 	}
 	f.Close()
 
 	content, err := os.ReadFile(fs.filePath)
 	if err != nil {
-		panic(err)
+		fs.log.Error().
+			Err(err).
+			Str("file_path", fs.filePath).
+			Msg("can't read file storage")
+		return err
 	}
 
 	if len(content) == 0 {
-		return
+		fs.log.Debug().
+			Str("file_path", fs.filePath).
+			Msg("empty file storage")
+		return nil
 	}
 
 	records := make([]*Record, 0)
 	err = json.Unmarshal(content, &records)
 	if err != nil {
-		panic(err)
+		fs.log.Error().
+			Err(err).
+			Str("file_path", fs.filePath).
+			Msg("can't unmarshal file storage")
+		return err
 	}
 
 	fs.values = records
@@ -37,15 +52,29 @@ func (fs *FileStorage) load() {
 			fs.freeID = record.ID + 1
 		}
 	}
+
+	return nil
 }
 
-func (fs *FileStorage) write() {
+func (fs *FileStorage) write() error {
 	bytes, err := json.Marshal(fs.values)
 	if err != nil {
-		panic(err)
+		fs.log.Error().
+			Err(err).
+			Interface("repository", fs.repository).
+			Msg("can't marshal file storage")
+		return err
 	}
+
 	err = os.WriteFile(fs.filePath, bytes, 0o644)
 	if err != nil {
-		panic(err)
+		fs.log.Error().
+			Err(err).
+			Interface("repository", fs.repository).
+			Str("file_path", fs.filePath).
+			Msg("can't marshal file storage")
+		return err
 	}
+
+	return nil
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/rs/zerolog"
+
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
@@ -13,9 +15,10 @@ type FileStorage struct {
 	mutex      sync.RWMutex
 	freeID     RecordID
 	filePath   string
+	log        zerolog.Logger
 }
 
-func New(filePath string) repository.Repository {
+func New(filePath string, log zerolog.Logger) (repository.Repository, error) {
 	repo := make(map[string]*Record)
 	vals := make([]*Record, 0)
 
@@ -24,11 +27,12 @@ func New(filePath string) repository.Repository {
 		values:     vals,
 		filePath:   filePath,
 		freeID:     1,
+		log:        log,
 	}
 
-	fs.load()
+	err := fs.load()
 
-	return fs
+	return fs, err
 }
 
 func (fs *FileStorage) Add(_ context.Context, key string, value string) error {
@@ -43,9 +47,8 @@ func (fs *FileStorage) Add(_ context.Context, key string, value string) error {
 	fs.repository[key] = rec
 	fs.values = append(fs.values, rec)
 	fs.freeID++
-	fs.write()
 
-	return nil
+	return fs.write()
 }
 
 func (fs *FileStorage) Get(_ context.Context, key string) (string, error) {
@@ -86,7 +89,5 @@ func (fs *FileStorage) Delete(_ context.Context, key string) error {
 		fs.freeID--
 	}
 
-	fs.write()
-
-	return nil
+	return fs.write()
 }

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -36,28 +35,30 @@ func (lrw *loggingResponseWriter) WriteHeader(statusCode int) {
 	lrw.responseData.status = statusCode
 }
 
-func LoggerMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+func NewLoggerMiddleware(log zerolog.Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
 
-		var resp responseData
+			var resp responseData
 
-		lw := &loggingResponseWriter{
-			ResponseWriter: w,
-			responseData:   &resp,
-		}
+			lw := &loggingResponseWriter{
+				ResponseWriter: w,
+				responseData:   &resp,
+			}
 
-		next.ServeHTTP(lw, r)
+			next.ServeHTTP(lw, r)
 
-		log.Info().
-			Str("method", r.Method).
-			Str("uri", r.RequestURI).
-			Dur("duration", time.Since(start)).
-			Msg("Got request")
+			log.Info().
+				Str("method", r.Method).
+				Str("uri", r.RequestURI).
+				Dur("duration", time.Since(start)).
+				Msg("Got request")
 
-		log.Info().
-			Int("status", lw.responseData.status).
-			Int("size", lw.responseData.size).
-			Msg("Send response")
-	})
+			log.Info().
+				Int("status", lw.responseData.status).
+				Int("size", lw.responseData.size).
+				Msg("Send response")
+		})
+	}
 }

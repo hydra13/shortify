@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	"github.com/hydra13/shortify/internal/models"
 )
@@ -15,7 +15,7 @@ type Shorter interface {
 	Create(ctx context.Context, long string) (string, error)
 }
 
-func CreateHandler(shorter Shorter, baseURL string) http.HandlerFunc {
+func CreateHandler(shorter Shorter, baseURL string, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

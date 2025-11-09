@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	"github.com/hydra13/shortify/internal/models"
 )
@@ -23,7 +23,7 @@ type JSONResponse struct {
 	Result string `json:"result"`
 }
 
-func CreateHandler(shorter Shorter, baseURL string) http.HandlerFunc {
+func CreateHandler(shorter Shorter, baseURL string, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
