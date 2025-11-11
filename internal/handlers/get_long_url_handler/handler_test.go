@@ -1,61 +1,60 @@
 package getlongurlhandler
 
 import (
-	"context"
+	"bytes"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gojuno/minimock/v3"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/hydra13/shortify/internal/handlers/get_long_url_handler/mocks"
 )
 
-type KeeperMock struct{}
-
-func (k KeeperMock) Get(_ context.Context, shortURL string) (string, bool, error) {
-	if shortURL == "testing1" {
-		return "https://ya.ru", true, nil
-	}
-
-	if shortURL == "errorTst" {
-		return "", false, errors.New("error")
-	}
-
-	return "", false, nil
-}
-
 func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
-	keeperMock := &KeeperMock{}
-
+	var buf bytes.Buffer
+	log := zerolog.New(&buf)
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	type want struct {
 		code     int
 		location string
 	}
 
 	tests := []struct {
-		name string
-		url  string
-		want want
+		name   string
+		keeper func(mc *minimock.Controller) UrlsKeeper
+		url    string
+		want   want
 	}{
 		{
 			name: "Success",
-			url:  "/testing1",
+			keeper: func(mc *minimock.Controller) UrlsKeeper {
+				return mocks.NewUrlsKeeperMock(mc).GetMock.
+					Expect(minimock.AnyContext, "testing1").
+					Return("https://ya.ru", true, nil)
+			},
+			url: "/testing1",
 			want: want{
 				code:     http.StatusTemporaryRedirect,
 				location: `https://ya.ru`,
 			},
 		},
 		{
-			name: "Error - key length greater than in config",
-			url:  "/testing1-testing-long-query",
+			name:   "Error - key length greater than in config",
+			keeper: func(mc *minimock.Controller) UrlsKeeper { return mocks.NewUrlsKeeperMock(mc) },
+			url:    "/testing1-testing-long-query",
 			want: want{
 				code:     http.StatusBadRequest,
 				location: "",
 			},
 		},
 		{
-			name: "Error - key length less than in config",
-			url:  "/t",
+			name:   "Error - key length less than in config",
+			keeper: func(mc *minimock.Controller) UrlsKeeper { return mocks.NewUrlsKeeperMock(mc) },
+			url:    "/t",
 			want: want{
 				code:     http.StatusBadRequest,
 				location: "",
@@ -63,7 +62,12 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 		},
 		{
 			name: "Error - key not found",
-			url:  "/testing2",
+			keeper: func(mc *minimock.Controller) UrlsKeeper {
+				return mocks.NewUrlsKeeperMock(mc).GetMock.
+					Expect(minimock.AnyContext, "testing2").
+					Return("", false, nil)
+			},
+			url: "/testing2",
 			want: want{
 				code:     http.StatusNotFound,
 				location: "",
@@ -71,7 +75,12 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 		},
 		{
 			name: "Error - during get value from repository",
-			url:  "/errorTst",
+			keeper: func(mc *minimock.Controller) UrlsKeeper {
+				return mocks.NewUrlsKeeperMock(mc).GetMock.
+					Expect(minimock.AnyContext, "errorTst").
+					Return("", false, errors.New("some error"))
+			},
+			url: "/errorTst",
 			want: want{
 				code:     http.StatusInternalServerError,
 				location: "",
@@ -80,9 +89,13 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			mc := minimock.NewController(t)
+			keeper := tt.keeper(mc)
+
 			request := httptest.NewRequest(http.MethodGet, tt.url, nil)
 			w := httptest.NewRecorder()
-			handler := CreateHandler(keeperMock)
+			handler := CreateHandler(keeper, log)
 
 			handler.ServeHTTP(w, request)
 
@@ -97,4 +110,5 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 			}
 		})
 	}
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

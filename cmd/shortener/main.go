@@ -3,40 +3,73 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
+	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
-	db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
+	"github.com/hydra13/shortify/internal/middlewares/compresser"
+	"github.com/hydra13/shortify/internal/middlewares/logger"
+	db "github.com/hydra13/shortify/internal/repositories/file_storage"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
+	shorter "github.com/hydra13/shortify/internal/services/shorter"
+	validator "github.com/hydra13/shortify/internal/services/url_validator"
 	urlsKeeper "github.com/hydra13/shortify/internal/services/urls_keeper"
 )
 
-var serverAddr string
-var baseURL string = "http://localhost:8080"
+var (
+	serverAddr  string
+	baseURL     string = "http://localhost:8080"
+	fileStorage string = "./storage.json"
+)
 
 func main() {
-	parseFlags()
+	parseConfigs()
+	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	repo := db.New()
+	repo, err := db.New(fileStorage, log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to init repo")
+	}
+
 	generator := gen.New()
-
+	urlValidator := validator.New()
 	uk := urlsKeeper.New(repo)
+	s := shorter.New(urlValidator, uk, generator, baseURL, log)
 
-	getShortURLHandler := shortUrlHandler.CreateHandler(uk, generator, baseURL)
-	getLongURLHandler := longUrlHandler.CreateHandler(uk)
+	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
+	getShortURLHandler := shortUrlHandler.CreateHandler(s, baseURL, log)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, baseURL, log)
 
 	r := chi.NewRouter()
+
+	r.Use(compresser.CompresserMiddleware)
+	r.Use(logger.NewLoggerMiddleware(log))
 
 	r.Post("/", getShortURLHandler)
 	r.Get("/{id}", getLongURLHandler)
 
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", getShortURLbyJSONHandler)
+	})
+
 	http.ListenAndServe(serverAddr, r)
 }
 
-func parseFlags() {
+func parseConfigs() {
 	flag.StringVar(&serverAddr, "a", ":8080", "server address")
+	flag.Func("f", "file storage path (default: \"./storage.json\")", func(path string) error {
+		if len(path) == 0 {
+			return nil
+		}
+
+		fileStorage = path
+
+		return nil
+	})
 	flag.Func("b", "result base url (default: \"http://localhost:8080\")", func(url string) error {
 		if len(url) == 0 {
 			return nil
@@ -52,4 +85,16 @@ func parseFlags() {
 	})
 
 	flag.Parse()
+
+	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
+		serverAddr = addr
+	}
+
+	if url, ok := os.LookupEnv("BASE_URL"); ok {
+		baseURL = url
+	}
+
+	if filePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
+		fileStorage = filePath
+	}
 }

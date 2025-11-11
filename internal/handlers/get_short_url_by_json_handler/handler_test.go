@@ -1,4 +1,4 @@
-package getshorturlhandler
+package getshorturlbyjsonhandler
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hydra13/shortify/internal/handlers/get_short_url_handler/mocks"
+	"github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler/mocks"
 	"github.com/hydra13/shortify/internal/models"
 )
 
@@ -43,24 +43,19 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 					Expect(minimock.AnyContext, "https://ya.ru").
 					Return("http://localhost:8080/testing1", nil)
 			},
-			url:   "/testing1",
-			input: "https://ya.ru",
+			url:   "/api/shorten",
+			input: `{"url":"https://ya.ru"}`,
 			want: want{
 				code:        http.StatusCreated,
-				response:    `http://localhost:8080/testing1`,
-				contentType: "text/plain",
+				response:    "{\"result\":\"http://localhost:8080/testing1\"}\n",
+				contentType: "application/json",
 			},
 		},
 		{
-			name: "Error when body is empty",
-			shorter: func(mc *minimock.Controller) Shorter {
-				return mocks.NewShorterMock(mc).
-					CreateMock.
-					Expect(minimock.AnyContext, "").
-					Return("", models.ErrValidation)
-			},
-			input: "",
-			url:   "/",
+			name:    "Error when body is empty",
+			shorter: func(mc *minimock.Controller) Shorter { return mocks.NewShorterMock(mc) },
+			input:   "",
+			url:     "/api/shorten",
 			want: want{
 				code: http.StatusBadRequest,
 			},
@@ -74,8 +69,8 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 					Expect(minimock.AnyContext, "not-url").
 					Return("", models.ErrValidation)
 			},
-			input: "not-url",
-			url:   "/",
+			input: `{"url":"not-url"}`,
+			url:   "/api/shorten",
 			want: want{
 				code: http.StatusBadRequest,
 			},
@@ -87,10 +82,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			t.Parallel()
 
 			mc := minimock.NewController(t)
-
 			shorter := tt.shorter(mc)
-			handler := CreateHandler(shorter, "http://localhost:8080", log)
 
+			handler := CreateHandler(shorter, "http://localhost:8080", log)
 			srv := httptest.NewServer(handler)
 			defer srv.Close()
 

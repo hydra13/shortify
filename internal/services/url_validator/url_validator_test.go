@@ -1,4 +1,4 @@
-package getshorturlhandler
+package urlvalidator
 
 import (
 	"testing"
@@ -6,7 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Validation(t *testing.T) {
+func Test_Validate(t *testing.T) {
+	validator := New()
 	tests := []struct {
 		name string
 		str  string
@@ -35,7 +36,7 @@ func Test_Validation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := validation(tt.str)
+			got := validator.Validate(tt.str)
 
 			assert.Equal(t, tt.want, got)
 		})

@@ -16,20 +16,19 @@ func New(repo repository.Repository) *UrlsKeeper {
 	}
 }
 
-func (UrlsKeeper *UrlsKeeper) Save(ctx context.Context, originalURL, shortURL string) error {
-	return UrlsKeeper.repo.Add(ctx, originalURL, shortURL)
+func (UrlsKeeper *UrlsKeeper) Save(ctx context.Context, originalURL, shortID string) error {
+	return UrlsKeeper.repo.Add(ctx, shortID, originalURL)
 }
 
 func (UrlsKeeper *UrlsKeeper) Get(
 	ctx context.Context,
-	shortURL string,
+	shortID string,
 ) (
 	originalURL string,
 	found bool,
 	err error,
 ) {
-	originalURL, err = UrlsKeeper.repo.Get(ctx, shortURL)
-
+	originalURL, err = UrlsKeeper.repo.Get(ctx, shortID)
 	if err != nil {
 		if err == repository.ErrKeyNotFound {
 			return "", false, nil
