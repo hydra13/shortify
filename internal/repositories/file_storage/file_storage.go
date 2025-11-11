@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog"
 
 	repository "github.com/hydra13/shortify/internal/repositories"
+	inmemory_db "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 )
 
 type FileStorage struct {
@@ -14,7 +15,9 @@ type FileStorage struct {
 	log      zerolog.Logger
 }
 
-func New(filePath string, inMemoryDB repository.Repository, log zerolog.Logger) (repository.Repository, error) {
+func New(filePath string, log zerolog.Logger) (repository.Repository, error) {
+	inMemoryDB := inmemory_db.New()
+
 	fs := &FileStorage{
 		inMemory: inMemoryDB,
 		filePath: filePath,
