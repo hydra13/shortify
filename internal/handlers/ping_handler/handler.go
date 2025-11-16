@@ -1,15 +1,19 @@
+//go:generate minimock -i .DB -o mocks -s _mock.go -g
 package pinghandler
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"time"
 
 	"github.com/rs/zerolog"
 )
 
-func CreateHandler(db *sql.DB, log zerolog.Logger) http.HandlerFunc {
+type DB interface {
+	PingContext(ctx context.Context) error
+}
+
+func CreateHandler(db DB, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if db == nil {
 			w.WriteHeader(http.StatusInternalServerError)

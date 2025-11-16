@@ -1,13 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
@@ -35,7 +35,7 @@ func main() {
 	parseConfigs()
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	dbInstance, err := sqlx.Connect(dbDriver, dbDSN) // "u
+	dbInstance, err := sql.Open(dbDriver, dbDSN)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to connect to db")
 	}
@@ -58,7 +58,6 @@ func main() {
 	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
 	getShortURLHandler := shortUrlHandler.CreateHandler(s, baseURL, log)
 	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, baseURL, log)
-	pingHandler := ping.CreateHandler(dbInstance.DB, log)
 
 	r := chi.NewRouter()
 
@@ -66,7 +65,10 @@ func main() {
 	r.Use(logger.NewLoggerMiddleware(log))
 
 	r.Post("/", getShortURLHandler)
-	r.Get("/ping", pingHandler)
+	if dbInstance != nil {
+		pingHandler := ping.CreateHandler(dbInstance, log)
+		r.Get("/ping", pingHandler)
+	}
 	r.Get("/{id}", getLongURLHandler)
 
 	r.Route("/api", func(r chi.Router) {
