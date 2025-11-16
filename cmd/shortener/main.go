@@ -1,20 +1,19 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"flag"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
+	ping "github.com/hydra13/shortify/internal/handlers/ping_handler"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
 	db "github.com/hydra13/shortify/internal/repositories/file_storage"
@@ -36,8 +35,7 @@ func main() {
 	parseConfigs()
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	// dbInstance, err := sql.Open("postgres", databaseDSN)
-	dbInstance, err := sql.Open(dbDriver, dbDSN) // "u
+	dbInstance, err := sqlx.Connect(dbDriver, dbDSN) // "u
 	if err != nil {
 		log.Error().Err(err).Msg("failed to connect to db")
 	}
@@ -60,6 +58,7 @@ func main() {
 	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
 	getShortURLHandler := shortUrlHandler.CreateHandler(s, baseURL, log)
 	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, baseURL, log)
+	pingHandler := ping.CreateHandler(dbInstance.DB, log)
 
 	r := chi.NewRouter()
 
@@ -67,21 +66,7 @@ func main() {
 	r.Use(logger.NewLoggerMiddleware(log))
 
 	r.Post("/", getShortURLHandler)
-	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-		if dbInstance == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		ctxTimeout, ctxCancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer ctxCancel()
-
-		if err := dbInstance.PingContext(ctxTimeout); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
+	r.Get("/ping", pingHandler)
 	r.Get("/{id}", getLongURLHandler)
 
 	r.Route("/api", func(r chi.Router) {
