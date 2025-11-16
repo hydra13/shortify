@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
@@ -24,11 +28,24 @@ var (
 	serverAddr  string
 	baseURL     string = "http://localhost:8080"
 	fileStorage string = "./storage.json"
+	dbDSN       string = "postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable"
+	dbDriver    string = "pgx"
 )
 
 func main() {
 	parseConfigs()
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	// dbInstance, err := sql.Open("postgres", databaseDSN)
+	dbInstance, err := sqlx.Connect(dbDriver, dbDSN) // "u
+	if err != nil {
+		log.Error().Err(err).Msg("failed to connect to db")
+	}
+	defer func() {
+		if dbInstance != nil {
+			dbInstance.Close()
+		}
+	}()
 
 	repo, err := db.New(fileStorage, log)
 	if err != nil {
@@ -50,6 +67,17 @@ func main() {
 	r.Use(logger.NewLoggerMiddleware(log))
 
 	r.Post("/", getShortURLHandler)
+	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		ctxTimeout, ctxCancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer ctxCancel()
+
+		_, err := sqlx.ConnectContext(ctxTimeout, dbDriver, dbDSN)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 	r.Get("/{id}", getLongURLHandler)
 
 	r.Route("/api", func(r chi.Router) {
@@ -83,6 +111,15 @@ func parseConfigs() {
 
 		return nil
 	})
+	flag.Func("d", "database DSN (default: \"postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable\")", func(dsn string) error {
+		if len(dsn) == 0 {
+			return nil
+		}
+
+		dbDSN = dsn
+
+		return nil
+	})
 
 	flag.Parse()
 
@@ -96,5 +133,9 @@ func parseConfigs() {
 
 	if filePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
 		fileStorage = filePath
+	}
+
+	if dsn, ok := os.LookupEnv("DATABASE_DSN"); ok {
+		dbDSN = dsn
 	}
 }
