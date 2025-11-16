@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"net/http"
 	"os"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
 
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
@@ -37,7 +37,7 @@ func main() {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	// dbInstance, err := sql.Open("postgres", databaseDSN)
-	dbInstance, err := sqlx.Connect(dbDriver, dbDSN) // "u
+	dbInstance, err := sql.Open(dbDriver, dbDSN) // "u
 	if err != nil {
 		log.Error().Err(err).Msg("failed to connect to db")
 	}
@@ -68,11 +68,15 @@ func main() {
 
 	r.Post("/", getShortURLHandler)
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		if dbInstance == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		ctxTimeout, ctxCancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer ctxCancel()
 
-		_, err := sqlx.ConnectContext(ctxTimeout, dbDriver, dbDSN)
-		if err != nil {
+		if err := dbInstance.PingContext(ctxTimeout); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
