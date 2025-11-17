@@ -16,11 +16,18 @@ func New(repo repository.Repository) *UrlsKeeper {
 	}
 }
 
-func (UrlsKeeper *UrlsKeeper) Save(ctx context.Context, originalURL, shortID string) error {
-	return UrlsKeeper.repo.Add(ctx, shortID, originalURL)
+func (uk *UrlsKeeper) Save(ctx context.Context, originalURL, shortID string) error {
+	return uk.repo.Add(ctx, shortID, originalURL)
 }
 
-func (UrlsKeeper *UrlsKeeper) Get(
+func (uk *UrlsKeeper) SaveBatch(
+	ctx context.Context,
+	urls map[string]string,
+) error {
+	return uk.repo.AddBatch(ctx, urls)
+}
+
+func (uk *UrlsKeeper) Get(
 	ctx context.Context,
 	shortID string,
 ) (
@@ -28,7 +35,7 @@ func (UrlsKeeper *UrlsKeeper) Get(
 	found bool,
 	err error,
 ) {
-	originalURL, err = UrlsKeeper.repo.Get(ctx, shortID)
+	originalURL, err = uk.repo.Get(ctx, shortID)
 	if err != nil {
 		if err == repository.ErrKeyNotFound {
 			return "", false, nil
@@ -40,6 +47,6 @@ func (UrlsKeeper *UrlsKeeper) Get(
 	return originalURL, true, nil
 }
 
-func (UrlsKeeper *UrlsKeeper) Delete(ctx context.Context, shortURL string) error {
-	return UrlsKeeper.repo.Delete(ctx, shortURL)
+func (uk *UrlsKeeper) Delete(ctx context.Context, shortURL string) error {
+	return uk.repo.Delete(ctx, shortURL)
 }
