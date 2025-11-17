@@ -99,7 +99,7 @@ func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string) err
 func (dbs *DBStorage) Get(ctx context.Context, key string) (string, error) {
 	row := dbs.db.QueryRowContext(
 		ctx,
-		"SELECT original_url FRONM shortify_urls WHERE short_url == $1 LIMIT 1",
+		"SELECT original_url FROM shortify_urls WHERE short_url = $1 LIMIT 1",
 		key,
 	)
 	if row.Err() != nil {
