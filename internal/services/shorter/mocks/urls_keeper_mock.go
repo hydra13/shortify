@@ -22,6 +22,13 @@ type UrlsKeeperMock struct {
 	afterSaveCounter  uint64
 	beforeSaveCounter uint64
 	SaveMock          mUrlsKeeperMockSave
+
+	funcSaveBatch          func(ctx context.Context, urls map[string]string) (err error)
+	funcSaveBatchOrigin    string
+	inspectFuncSaveBatch   func(ctx context.Context, urls map[string]string)
+	afterSaveBatchCounter  uint64
+	beforeSaveBatchCounter uint64
+	SaveBatchMock          mUrlsKeeperMockSaveBatch
 }
 
 // NewUrlsKeeperMock returns a mock for mm_shorter.UrlsKeeper
@@ -34,6 +41,9 @@ func NewUrlsKeeperMock(t minimock.Tester) *UrlsKeeperMock {
 
 	m.SaveMock = mUrlsKeeperMockSave{mock: m}
 	m.SaveMock.callArgs = []*UrlsKeeperMockSaveParams{}
+
+	m.SaveBatchMock = mUrlsKeeperMockSaveBatch{mock: m}
+	m.SaveBatchMock.callArgs = []*UrlsKeeperMockSaveBatchParams{}
 
 	t.Cleanup(m.MinimockFinish)
 
@@ -413,11 +423,355 @@ func (m *UrlsKeeperMock) MinimockSaveInspect() {
 	}
 }
 
+type mUrlsKeeperMockSaveBatch struct {
+	optional           bool
+	mock               *UrlsKeeperMock
+	defaultExpectation *UrlsKeeperMockSaveBatchExpectation
+	expectations       []*UrlsKeeperMockSaveBatchExpectation
+
+	callArgs []*UrlsKeeperMockSaveBatchParams
+	mutex    sync.RWMutex
+
+	expectedInvocations       uint64
+	expectedInvocationsOrigin string
+}
+
+// UrlsKeeperMockSaveBatchExpectation specifies expectation struct of the UrlsKeeper.SaveBatch
+type UrlsKeeperMockSaveBatchExpectation struct {
+	mock               *UrlsKeeperMock
+	params             *UrlsKeeperMockSaveBatchParams
+	paramPtrs          *UrlsKeeperMockSaveBatchParamPtrs
+	expectationOrigins UrlsKeeperMockSaveBatchExpectationOrigins
+	results            *UrlsKeeperMockSaveBatchResults
+	returnOrigin       string
+	Counter            uint64
+}
+
+// UrlsKeeperMockSaveBatchParams contains parameters of the UrlsKeeper.SaveBatch
+type UrlsKeeperMockSaveBatchParams struct {
+	ctx  context.Context
+	urls map[string]string
+}
+
+// UrlsKeeperMockSaveBatchParamPtrs contains pointers to parameters of the UrlsKeeper.SaveBatch
+type UrlsKeeperMockSaveBatchParamPtrs struct {
+	ctx  *context.Context
+	urls *map[string]string
+}
+
+// UrlsKeeperMockSaveBatchResults contains results of the UrlsKeeper.SaveBatch
+type UrlsKeeperMockSaveBatchResults struct {
+	err error
+}
+
+// UrlsKeeperMockSaveBatchOrigins contains origins of expectations of the UrlsKeeper.SaveBatch
+type UrlsKeeperMockSaveBatchExpectationOrigins struct {
+	origin     string
+	originCtx  string
+	originUrls string
+}
+
+// Marks this method to be optional. The default behavior of any method with Return() is '1 or more', meaning
+// the test will fail minimock's automatic final call check if the mocked method was not called at least once.
+// Optional() makes method check to work in '0 or more' mode.
+// It is NOT RECOMMENDED to use this option unless you really need it, as default behaviour helps to
+// catch the problems when the expected method call is totally skipped during test run.
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Optional() *mUrlsKeeperMockSaveBatch {
+	mmSaveBatch.optional = true
+	return mmSaveBatch
+}
+
+// Expect sets up expected params for UrlsKeeper.SaveBatch
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Expect(ctx context.Context, urls map[string]string) *mUrlsKeeperMockSaveBatch {
+	if mmSaveBatch.mock.funcSaveBatch != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
+	}
+
+	if mmSaveBatch.defaultExpectation == nil {
+		mmSaveBatch.defaultExpectation = &UrlsKeeperMockSaveBatchExpectation{}
+	}
+
+	if mmSaveBatch.defaultExpectation.paramPtrs != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by ExpectParams functions")
+	}
+
+	mmSaveBatch.defaultExpectation.params = &UrlsKeeperMockSaveBatchParams{ctx, urls}
+	mmSaveBatch.defaultExpectation.expectationOrigins.origin = minimock.CallerInfo(1)
+	for _, e := range mmSaveBatch.expectations {
+		if minimock.Equal(e.params, mmSaveBatch.defaultExpectation.params) {
+			mmSaveBatch.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmSaveBatch.defaultExpectation.params)
+		}
+	}
+
+	return mmSaveBatch
+}
+
+// ExpectCtxParam1 sets up expected param ctx for UrlsKeeper.SaveBatch
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) ExpectCtxParam1(ctx context.Context) *mUrlsKeeperMockSaveBatch {
+	if mmSaveBatch.mock.funcSaveBatch != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
+	}
+
+	if mmSaveBatch.defaultExpectation == nil {
+		mmSaveBatch.defaultExpectation = &UrlsKeeperMockSaveBatchExpectation{}
+	}
+
+	if mmSaveBatch.defaultExpectation.params != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Expect")
+	}
+
+	if mmSaveBatch.defaultExpectation.paramPtrs == nil {
+		mmSaveBatch.defaultExpectation.paramPtrs = &UrlsKeeperMockSaveBatchParamPtrs{}
+	}
+	mmSaveBatch.defaultExpectation.paramPtrs.ctx = &ctx
+	mmSaveBatch.defaultExpectation.expectationOrigins.originCtx = minimock.CallerInfo(1)
+
+	return mmSaveBatch
+}
+
+// ExpectUrlsParam2 sets up expected param urls for UrlsKeeper.SaveBatch
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) ExpectUrlsParam2(urls map[string]string) *mUrlsKeeperMockSaveBatch {
+	if mmSaveBatch.mock.funcSaveBatch != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
+	}
+
+	if mmSaveBatch.defaultExpectation == nil {
+		mmSaveBatch.defaultExpectation = &UrlsKeeperMockSaveBatchExpectation{}
+	}
+
+	if mmSaveBatch.defaultExpectation.params != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Expect")
+	}
+
+	if mmSaveBatch.defaultExpectation.paramPtrs == nil {
+		mmSaveBatch.defaultExpectation.paramPtrs = &UrlsKeeperMockSaveBatchParamPtrs{}
+	}
+	mmSaveBatch.defaultExpectation.paramPtrs.urls = &urls
+	mmSaveBatch.defaultExpectation.expectationOrigins.originUrls = minimock.CallerInfo(1)
+
+	return mmSaveBatch
+}
+
+// Inspect accepts an inspector function that has same arguments as the UrlsKeeper.SaveBatch
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Inspect(f func(ctx context.Context, urls map[string]string)) *mUrlsKeeperMockSaveBatch {
+	if mmSaveBatch.mock.inspectFuncSaveBatch != nil {
+		mmSaveBatch.mock.t.Fatalf("Inspect function is already set for UrlsKeeperMock.SaveBatch")
+	}
+
+	mmSaveBatch.mock.inspectFuncSaveBatch = f
+
+	return mmSaveBatch
+}
+
+// Return sets up results that will be returned by UrlsKeeper.SaveBatch
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Return(err error) *UrlsKeeperMock {
+	if mmSaveBatch.mock.funcSaveBatch != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
+	}
+
+	if mmSaveBatch.defaultExpectation == nil {
+		mmSaveBatch.defaultExpectation = &UrlsKeeperMockSaveBatchExpectation{mock: mmSaveBatch.mock}
+	}
+	mmSaveBatch.defaultExpectation.results = &UrlsKeeperMockSaveBatchResults{err}
+	mmSaveBatch.defaultExpectation.returnOrigin = minimock.CallerInfo(1)
+	return mmSaveBatch.mock
+}
+
+// Set uses given function f to mock the UrlsKeeper.SaveBatch method
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Set(f func(ctx context.Context, urls map[string]string) (err error)) *UrlsKeeperMock {
+	if mmSaveBatch.defaultExpectation != nil {
+		mmSaveBatch.mock.t.Fatalf("Default expectation is already set for the UrlsKeeper.SaveBatch method")
+	}
+
+	if len(mmSaveBatch.expectations) > 0 {
+		mmSaveBatch.mock.t.Fatalf("Some expectations are already set for the UrlsKeeper.SaveBatch method")
+	}
+
+	mmSaveBatch.mock.funcSaveBatch = f
+	mmSaveBatch.mock.funcSaveBatchOrigin = minimock.CallerInfo(1)
+	return mmSaveBatch.mock
+}
+
+// When sets expectation for the UrlsKeeper.SaveBatch which will trigger the result defined by the following
+// Then helper
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) When(ctx context.Context, urls map[string]string) *UrlsKeeperMockSaveBatchExpectation {
+	if mmSaveBatch.mock.funcSaveBatch != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
+	}
+
+	expectation := &UrlsKeeperMockSaveBatchExpectation{
+		mock:               mmSaveBatch.mock,
+		params:             &UrlsKeeperMockSaveBatchParams{ctx, urls},
+		expectationOrigins: UrlsKeeperMockSaveBatchExpectationOrigins{origin: minimock.CallerInfo(1)},
+	}
+	mmSaveBatch.expectations = append(mmSaveBatch.expectations, expectation)
+	return expectation
+}
+
+// Then sets up UrlsKeeper.SaveBatch return parameters for the expectation previously defined by the When method
+func (e *UrlsKeeperMockSaveBatchExpectation) Then(err error) *UrlsKeeperMock {
+	e.results = &UrlsKeeperMockSaveBatchResults{err}
+	return e.mock
+}
+
+// Times sets number of times UrlsKeeper.SaveBatch should be invoked
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Times(n uint64) *mUrlsKeeperMockSaveBatch {
+	if n == 0 {
+		mmSaveBatch.mock.t.Fatalf("Times of UrlsKeeperMock.SaveBatch mock can not be zero")
+	}
+	mm_atomic.StoreUint64(&mmSaveBatch.expectedInvocations, n)
+	mmSaveBatch.expectedInvocationsOrigin = minimock.CallerInfo(1)
+	return mmSaveBatch
+}
+
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) invocationsDone() bool {
+	if len(mmSaveBatch.expectations) == 0 && mmSaveBatch.defaultExpectation == nil && mmSaveBatch.mock.funcSaveBatch == nil {
+		return true
+	}
+
+	totalInvocations := mm_atomic.LoadUint64(&mmSaveBatch.mock.afterSaveBatchCounter)
+	expectedInvocations := mm_atomic.LoadUint64(&mmSaveBatch.expectedInvocations)
+
+	return totalInvocations > 0 && (expectedInvocations == 0 || expectedInvocations == totalInvocations)
+}
+
+// SaveBatch implements mm_shorter.UrlsKeeper
+func (mmSaveBatch *UrlsKeeperMock) SaveBatch(ctx context.Context, urls map[string]string) (err error) {
+	mm_atomic.AddUint64(&mmSaveBatch.beforeSaveBatchCounter, 1)
+	defer mm_atomic.AddUint64(&mmSaveBatch.afterSaveBatchCounter, 1)
+
+	mmSaveBatch.t.Helper()
+
+	if mmSaveBatch.inspectFuncSaveBatch != nil {
+		mmSaveBatch.inspectFuncSaveBatch(ctx, urls)
+	}
+
+	mm_params := UrlsKeeperMockSaveBatchParams{ctx, urls}
+
+	// Record call args
+	mmSaveBatch.SaveBatchMock.mutex.Lock()
+	mmSaveBatch.SaveBatchMock.callArgs = append(mmSaveBatch.SaveBatchMock.callArgs, &mm_params)
+	mmSaveBatch.SaveBatchMock.mutex.Unlock()
+
+	for _, e := range mmSaveBatch.SaveBatchMock.expectations {
+		if minimock.Equal(*e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.err
+		}
+	}
+
+	if mmSaveBatch.SaveBatchMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmSaveBatch.SaveBatchMock.defaultExpectation.Counter, 1)
+		mm_want := mmSaveBatch.SaveBatchMock.defaultExpectation.params
+		mm_want_ptrs := mmSaveBatch.SaveBatchMock.defaultExpectation.paramPtrs
+
+		mm_got := UrlsKeeperMockSaveBatchParams{ctx, urls}
+
+		if mm_want_ptrs != nil {
+
+			if mm_want_ptrs.ctx != nil && !minimock.Equal(*mm_want_ptrs.ctx, mm_got.ctx) {
+				mmSaveBatch.t.Errorf("UrlsKeeperMock.SaveBatch got unexpected parameter ctx, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmSaveBatch.SaveBatchMock.defaultExpectation.expectationOrigins.originCtx, *mm_want_ptrs.ctx, mm_got.ctx, minimock.Diff(*mm_want_ptrs.ctx, mm_got.ctx))
+			}
+
+			if mm_want_ptrs.urls != nil && !minimock.Equal(*mm_want_ptrs.urls, mm_got.urls) {
+				mmSaveBatch.t.Errorf("UrlsKeeperMock.SaveBatch got unexpected parameter urls, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmSaveBatch.SaveBatchMock.defaultExpectation.expectationOrigins.originUrls, *mm_want_ptrs.urls, mm_got.urls, minimock.Diff(*mm_want_ptrs.urls, mm_got.urls))
+			}
+
+		} else if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmSaveBatch.t.Errorf("UrlsKeeperMock.SaveBatch got unexpected parameters, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+				mmSaveBatch.SaveBatchMock.defaultExpectation.expectationOrigins.origin, *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmSaveBatch.SaveBatchMock.defaultExpectation.results
+		if mm_results == nil {
+			mmSaveBatch.t.Fatal("No results are set for the UrlsKeeperMock.SaveBatch")
+		}
+		return (*mm_results).err
+	}
+	if mmSaveBatch.funcSaveBatch != nil {
+		return mmSaveBatch.funcSaveBatch(ctx, urls)
+	}
+	mmSaveBatch.t.Fatalf("Unexpected call to UrlsKeeperMock.SaveBatch. %v %v", ctx, urls)
+	return
+}
+
+// SaveBatchAfterCounter returns a count of finished UrlsKeeperMock.SaveBatch invocations
+func (mmSaveBatch *UrlsKeeperMock) SaveBatchAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmSaveBatch.afterSaveBatchCounter)
+}
+
+// SaveBatchBeforeCounter returns a count of UrlsKeeperMock.SaveBatch invocations
+func (mmSaveBatch *UrlsKeeperMock) SaveBatchBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmSaveBatch.beforeSaveBatchCounter)
+}
+
+// Calls returns a list of arguments used in each call to UrlsKeeperMock.SaveBatch.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Calls() []*UrlsKeeperMockSaveBatchParams {
+	mmSaveBatch.mutex.RLock()
+
+	argCopy := make([]*UrlsKeeperMockSaveBatchParams, len(mmSaveBatch.callArgs))
+	copy(argCopy, mmSaveBatch.callArgs)
+
+	mmSaveBatch.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockSaveBatchDone returns true if the count of the SaveBatch invocations corresponds
+// the number of defined expectations
+func (m *UrlsKeeperMock) MinimockSaveBatchDone() bool {
+	if m.SaveBatchMock.optional {
+		// Optional methods provide '0 or more' call count restriction.
+		return true
+	}
+
+	for _, e := range m.SaveBatchMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	return m.SaveBatchMock.invocationsDone()
+}
+
+// MinimockSaveBatchInspect logs each unmet expectation
+func (m *UrlsKeeperMock) MinimockSaveBatchInspect() {
+	for _, e := range m.SaveBatchMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to UrlsKeeperMock.SaveBatch at\n%s with params: %#v", e.expectationOrigins.origin, *e.params)
+		}
+	}
+
+	afterSaveBatchCounter := mm_atomic.LoadUint64(&m.afterSaveBatchCounter)
+	// if default expectation was set then invocations count should be greater than zero
+	if m.SaveBatchMock.defaultExpectation != nil && afterSaveBatchCounter < 1 {
+		if m.SaveBatchMock.defaultExpectation.params == nil {
+			m.t.Errorf("Expected call to UrlsKeeperMock.SaveBatch at\n%s", m.SaveBatchMock.defaultExpectation.returnOrigin)
+		} else {
+			m.t.Errorf("Expected call to UrlsKeeperMock.SaveBatch at\n%s with params: %#v", m.SaveBatchMock.defaultExpectation.expectationOrigins.origin, *m.SaveBatchMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcSaveBatch != nil && afterSaveBatchCounter < 1 {
+		m.t.Errorf("Expected call to UrlsKeeperMock.SaveBatch at\n%s", m.funcSaveBatchOrigin)
+	}
+
+	if !m.SaveBatchMock.invocationsDone() && afterSaveBatchCounter > 0 {
+		m.t.Errorf("Expected %d calls to UrlsKeeperMock.SaveBatch at\n%s but found %d calls",
+			mm_atomic.LoadUint64(&m.SaveBatchMock.expectedInvocations), m.SaveBatchMock.expectedInvocationsOrigin, afterSaveBatchCounter)
+	}
+}
+
 // MinimockFinish checks that all mocked methods have been called the expected number of times
 func (m *UrlsKeeperMock) MinimockFinish() {
 	m.finishOnce.Do(func() {
 		if !m.minimockDone() {
 			m.MinimockSaveInspect()
+
+			m.MinimockSaveBatchInspect()
 		}
 	})
 }
@@ -441,5 +795,6 @@ func (m *UrlsKeeperMock) MinimockWait(timeout mm_time.Duration) {
 func (m *UrlsKeeperMock) minimockDone() bool {
 	done := true
 	return done &&
-		m.MinimockSaveDone()
+		m.MinimockSaveDone() &&
+		m.MinimockSaveBatchDone()
 }

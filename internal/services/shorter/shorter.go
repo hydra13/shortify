@@ -16,6 +16,7 @@ type Generator interface {
 
 type UrlsKeeper interface {
 	Save(ctx context.Context, originalURL string, shortURL string) error
+	SaveBatch(ctx context.Context, urls map[string]string) error
 }
 
 type URLValidator interface {
@@ -66,4 +67,33 @@ func (s Shorter) Create(ctx context.Context, long string) (string, error) {
 	}
 
 	return shortURL, nil
+}
+
+func (s Shorter) CreateBatch(ctx context.Context, longURLs map[string]string) (map[string]string, error) {
+	shortURLs := make(map[string]string, len(longURLs))
+	pairURLs := make(map[string]string, len(longURLs))
+
+	for correlationID, longURL := range longURLs {
+		if !s.validator.Validate(longURL) {
+			return nil, models.ErrValidation
+		}
+
+		shortID := s.generator.GenerateShortID(longURL)
+		shortURL := fmt.Sprintf(`%s/%s`, s.baseURL, shortID)
+
+		shortURLs[correlationID] = shortURL
+		pairURLs[shortID] = longURL
+	}
+
+	err := s.keeper.SaveBatch(ctx, pairURLs)
+	if err != nil {
+		s.log.Error().
+			Interface("pair_urls", pairURLs).
+			Err(err).
+			Msg("Error save urls into repository")
+
+		return nil, models.ErrInternal
+	}
+
+	return shortURLs, nil
 }
