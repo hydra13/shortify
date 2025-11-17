@@ -35,6 +35,12 @@ func (fs *FileStorage) Add(ctx context.Context, key string, value string) error 
 	return fs.write(ctx)
 }
 
+func (fs *FileStorage) AddBatch(ctx context.Context, batch map[string]string) error {
+	fs.inMemory.AddBatch(ctx, batch)
+
+	return fs.write(ctx)
+}
+
 func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
 	return fs.inMemory.Get(ctx, key)
 }

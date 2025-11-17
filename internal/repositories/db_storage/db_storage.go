@@ -10,6 +10,7 @@ import (
 )
 
 type DB interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
@@ -71,6 +72,28 @@ func (dbs *DBStorage) Add(ctx context.Context, key string, value string) error {
 	}
 
 	return nil
+}
+
+func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string) error {
+	tx, err := dbs.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	for shortURL, originalURL := range batch {
+		_, err = tx.ExecContext(
+			ctx,
+			"INSERT INTO shortify_urls (short_url, original_url) VALUES ($1, $2)",
+			shortURL,
+			originalURL,
+		)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (dbs *DBStorage) Get(ctx context.Context, key string) (string, error) {

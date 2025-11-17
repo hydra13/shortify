@@ -28,6 +28,15 @@ func (r *InMemoryDB) Add(_ context.Context, key string, value string) error {
 	return nil
 }
 
+func (r *InMemoryDB) AddBatch(_ context.Context, keyValue map[string]string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for k, v := range keyValue {
+		r.repository[k] = v
+	}
+	return nil
+}
+
 func (r *InMemoryDB) Get(_ context.Context, key string) (string, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
