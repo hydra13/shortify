@@ -15,5 +15,6 @@ type Repository interface {
 	AddBatch(ctx context.Context, keyValue map[string]string) error
 	Get(ctx context.Context, key string) (string, error)
 	GetAll(ctx context.Context) (map[string]string, error)
+	GetShortURL(ctx context.Context, originalURL string) (string, error)
 	Delete(ctx context.Context, key string) error
 }

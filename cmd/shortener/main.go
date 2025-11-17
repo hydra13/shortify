@@ -8,8 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog"
 
+	_ "github.com/hydra13/shortify"
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
@@ -165,6 +167,11 @@ func parseConfigs() {
 func getRepository(dbInstance *sql.DB, log zerolog.Logger) (repository.Repository, error) {
 	switch currentMode {
 	case ModeDBStorage:
+		err := applyMigrations(dbInstance)
+		if err != nil {
+			return nil, err
+		}
+
 		repo, err := dbStorage.New(dbInstance, log)
 		if err != nil {
 			return nil, err
@@ -182,4 +189,12 @@ func getRepository(dbInstance *sql.DB, log zerolog.Logger) (repository.Repositor
 	}
 
 	return inmemorydb.New(), nil
+}
+
+func applyMigrations(db *sql.DB) error {
+	if err := goose.SetDialect(dbDriver); err != nil {
+		return err
+	}
+
+	return goose.Up(db, "migrations")
 }

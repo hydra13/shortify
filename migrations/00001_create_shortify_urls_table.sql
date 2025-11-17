@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-create table shortify_urls (
+create table if not exists shortify_urls (
     id bigserial primary key,
     short_url text not null unique,
     original_url text not null,
@@ -10,5 +10,5 @@ create table shortify_urls (
 
 -- +goose Down
 -- +goose StatementBegin
-drop table shortify_urls;
+drop table if exists shortify_urls;
 -- +goose StatementEnd

@@ -3,9 +3,14 @@ package pgstorage
 import (
 	"context"
 	"database/sql"
+	"errors"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
+	"github.com/hydra13/shortify/internal/models"
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
@@ -27,42 +32,27 @@ func New(db DB, log zerolog.Logger) (repository.Repository, error) {
 		log: log,
 	}
 
-	if err := dbs.initDB(); err != nil {
-		return nil, err
-	}
-
 	return dbs, nil
-}
-
-func (dbs *DBStorage) initDB() error {
-	res, err := dbs.db.ExecContext(
-		context.Background(),
-		`CREATE TABLE IF NOT EXISTS shortify_urls (
-			id BIGSERIAL PRIMARY KEY,
-    		short_url TEXT NOT NULL UNIQUE,
-    		original_url TEXT NOT NULL,
-    		created_at TIMESTAMP NOT NULL DEFAULT now()
-	)`)
-	if err != nil {
-		return err
-	}
-
-	_, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (dbs *DBStorage) Add(ctx context.Context, key string, value string) error {
 	res, err := dbs.db.ExecContext(
 		ctx,
-		"INSERT INTO shortify_urls (short_url, original_url) VALUES ($1, $2)",
+		`INSERT INTO shortify_urls (short_url, original_url)
+		VALUES ($1, $2)`,
 		key,
 		value,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return models.ErrConflict
+		}
+
+		log.
+			Err(err).
+			Msg("DBStorage: error inserting data to db")
+
 		return err
 	}
 
@@ -89,6 +79,11 @@ func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string) err
 		)
 		if err != nil {
 			tx.Rollback()
+
+			log.
+				Err(err).
+				Msg("DBStorage: error inserting batch data to db")
+
 			return err
 		}
 	}
@@ -102,12 +97,12 @@ func (dbs *DBStorage) Get(ctx context.Context, key string) (string, error) {
 		"SELECT original_url FROM shortify_urls WHERE short_url = $1 LIMIT 1",
 		key,
 	)
-	if row.Err() != nil {
-		return "", row.Err()
-	}
 
 	var originalURL string
 	if err := row.Scan(&originalURL); err != nil {
+		log.
+			Err(err).
+			Msg("DBStorage: error scanning row")
 		return "", err
 	}
 
@@ -122,12 +117,17 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	result := make(map[string]string, 0)
 	for rows.Next() {
 		var shortURL, originalURL string
 
 		if err := rows.Scan(&shortURL, &originalURL); err != nil {
+			log.
+				Err(err).
+				Msg("DBStorage: error scanning row from rows")
+
 			return nil, err
 		}
 
@@ -135,26 +135,42 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]string, error) {
 	}
 
 	if rows.Err() != nil {
+		log.
+			Err(err).
+			Msg("DBStorage: error iterating over rows")
 		return nil, rows.Err()
 	}
 
 	return result, nil
 }
 
+func (dbs *DBStorage) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	row := dbs.db.QueryRowContext(
+		ctx,
+		"SELECT short_url FROM shortify_urls WHERE original_url = $1 LIMIT 1",
+		originalURL,
+	)
+
+	var shortURL string
+	if err := row.Scan(&shortURL); err != nil {
+		log.
+			Err(err).
+			Msg("DBStorage: error scanning row with shortURL")
+		return "", err
+	}
+	return shortURL, nil
+}
+
 func (dbs *DBStorage) Delete(ctx context.Context, key string) error {
-	res, err := dbs.db.ExecContext(
+	_, err := dbs.db.ExecContext(
 		ctx,
 		"DELETE FROM shortify_urls WHERE short_url = $1",
 		key,
 	)
 	if err != nil {
-		return err
+		log.
+			Err(err).
+			Msg("DBStorage: error deleting data from db")
 	}
-
-	_, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

@@ -16,6 +16,13 @@ type UrlsKeeperMock struct {
 	t          minimock.Tester
 	finishOnce sync.Once
 
+	funcGetShortURL          func(ctx context.Context, originalURL string) (s1 string, err error)
+	funcGetShortURLOrigin    string
+	inspectFuncGetShortURL   func(ctx context.Context, originalURL string)
+	afterGetShortURLCounter  uint64
+	beforeGetShortURLCounter uint64
+	GetShortURLMock          mUrlsKeeperMockGetShortURL
+
 	funcSave          func(ctx context.Context, originalURL string, shortURL string) (err error)
 	funcSaveOrigin    string
 	inspectFuncSave   func(ctx context.Context, originalURL string, shortURL string)
@@ -39,6 +46,9 @@ func NewUrlsKeeperMock(t minimock.Tester) *UrlsKeeperMock {
 		controller.RegisterMocker(m)
 	}
 
+	m.GetShortURLMock = mUrlsKeeperMockGetShortURL{mock: m}
+	m.GetShortURLMock.callArgs = []*UrlsKeeperMockGetShortURLParams{}
+
 	m.SaveMock = mUrlsKeeperMockSave{mock: m}
 	m.SaveMock.callArgs = []*UrlsKeeperMockSaveParams{}
 
@@ -48,6 +58,349 @@ func NewUrlsKeeperMock(t minimock.Tester) *UrlsKeeperMock {
 	t.Cleanup(m.MinimockFinish)
 
 	return m
+}
+
+type mUrlsKeeperMockGetShortURL struct {
+	optional           bool
+	mock               *UrlsKeeperMock
+	defaultExpectation *UrlsKeeperMockGetShortURLExpectation
+	expectations       []*UrlsKeeperMockGetShortURLExpectation
+
+	callArgs []*UrlsKeeperMockGetShortURLParams
+	mutex    sync.RWMutex
+
+	expectedInvocations       uint64
+	expectedInvocationsOrigin string
+}
+
+// UrlsKeeperMockGetShortURLExpectation specifies expectation struct of the UrlsKeeper.GetShortURL
+type UrlsKeeperMockGetShortURLExpectation struct {
+	mock               *UrlsKeeperMock
+	params             *UrlsKeeperMockGetShortURLParams
+	paramPtrs          *UrlsKeeperMockGetShortURLParamPtrs
+	expectationOrigins UrlsKeeperMockGetShortURLExpectationOrigins
+	results            *UrlsKeeperMockGetShortURLResults
+	returnOrigin       string
+	Counter            uint64
+}
+
+// UrlsKeeperMockGetShortURLParams contains parameters of the UrlsKeeper.GetShortURL
+type UrlsKeeperMockGetShortURLParams struct {
+	ctx         context.Context
+	originalURL string
+}
+
+// UrlsKeeperMockGetShortURLParamPtrs contains pointers to parameters of the UrlsKeeper.GetShortURL
+type UrlsKeeperMockGetShortURLParamPtrs struct {
+	ctx         *context.Context
+	originalURL *string
+}
+
+// UrlsKeeperMockGetShortURLResults contains results of the UrlsKeeper.GetShortURL
+type UrlsKeeperMockGetShortURLResults struct {
+	s1  string
+	err error
+}
+
+// UrlsKeeperMockGetShortURLOrigins contains origins of expectations of the UrlsKeeper.GetShortURL
+type UrlsKeeperMockGetShortURLExpectationOrigins struct {
+	origin            string
+	originCtx         string
+	originOriginalURL string
+}
+
+// Marks this method to be optional. The default behavior of any method with Return() is '1 or more', meaning
+// the test will fail minimock's automatic final call check if the mocked method was not called at least once.
+// Optional() makes method check to work in '0 or more' mode.
+// It is NOT RECOMMENDED to use this option unless you really need it, as default behaviour helps to
+// catch the problems when the expected method call is totally skipped during test run.
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) Optional() *mUrlsKeeperMockGetShortURL {
+	mmGetShortURL.optional = true
+	return mmGetShortURL
+}
+
+// Expect sets up expected params for UrlsKeeper.GetShortURL
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) Expect(ctx context.Context, originalURL string) *mUrlsKeeperMockGetShortURL {
+	if mmGetShortURL.mock.funcGetShortURL != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by Set")
+	}
+
+	if mmGetShortURL.defaultExpectation == nil {
+		mmGetShortURL.defaultExpectation = &UrlsKeeperMockGetShortURLExpectation{}
+	}
+
+	if mmGetShortURL.defaultExpectation.paramPtrs != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by ExpectParams functions")
+	}
+
+	mmGetShortURL.defaultExpectation.params = &UrlsKeeperMockGetShortURLParams{ctx, originalURL}
+	mmGetShortURL.defaultExpectation.expectationOrigins.origin = minimock.CallerInfo(1)
+	for _, e := range mmGetShortURL.expectations {
+		if minimock.Equal(e.params, mmGetShortURL.defaultExpectation.params) {
+			mmGetShortURL.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmGetShortURL.defaultExpectation.params)
+		}
+	}
+
+	return mmGetShortURL
+}
+
+// ExpectCtxParam1 sets up expected param ctx for UrlsKeeper.GetShortURL
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) ExpectCtxParam1(ctx context.Context) *mUrlsKeeperMockGetShortURL {
+	if mmGetShortURL.mock.funcGetShortURL != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by Set")
+	}
+
+	if mmGetShortURL.defaultExpectation == nil {
+		mmGetShortURL.defaultExpectation = &UrlsKeeperMockGetShortURLExpectation{}
+	}
+
+	if mmGetShortURL.defaultExpectation.params != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by Expect")
+	}
+
+	if mmGetShortURL.defaultExpectation.paramPtrs == nil {
+		mmGetShortURL.defaultExpectation.paramPtrs = &UrlsKeeperMockGetShortURLParamPtrs{}
+	}
+	mmGetShortURL.defaultExpectation.paramPtrs.ctx = &ctx
+	mmGetShortURL.defaultExpectation.expectationOrigins.originCtx = minimock.CallerInfo(1)
+
+	return mmGetShortURL
+}
+
+// ExpectOriginalURLParam2 sets up expected param originalURL for UrlsKeeper.GetShortURL
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) ExpectOriginalURLParam2(originalURL string) *mUrlsKeeperMockGetShortURL {
+	if mmGetShortURL.mock.funcGetShortURL != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by Set")
+	}
+
+	if mmGetShortURL.defaultExpectation == nil {
+		mmGetShortURL.defaultExpectation = &UrlsKeeperMockGetShortURLExpectation{}
+	}
+
+	if mmGetShortURL.defaultExpectation.params != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by Expect")
+	}
+
+	if mmGetShortURL.defaultExpectation.paramPtrs == nil {
+		mmGetShortURL.defaultExpectation.paramPtrs = &UrlsKeeperMockGetShortURLParamPtrs{}
+	}
+	mmGetShortURL.defaultExpectation.paramPtrs.originalURL = &originalURL
+	mmGetShortURL.defaultExpectation.expectationOrigins.originOriginalURL = minimock.CallerInfo(1)
+
+	return mmGetShortURL
+}
+
+// Inspect accepts an inspector function that has same arguments as the UrlsKeeper.GetShortURL
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) Inspect(f func(ctx context.Context, originalURL string)) *mUrlsKeeperMockGetShortURL {
+	if mmGetShortURL.mock.inspectFuncGetShortURL != nil {
+		mmGetShortURL.mock.t.Fatalf("Inspect function is already set for UrlsKeeperMock.GetShortURL")
+	}
+
+	mmGetShortURL.mock.inspectFuncGetShortURL = f
+
+	return mmGetShortURL
+}
+
+// Return sets up results that will be returned by UrlsKeeper.GetShortURL
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) Return(s1 string, err error) *UrlsKeeperMock {
+	if mmGetShortURL.mock.funcGetShortURL != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by Set")
+	}
+
+	if mmGetShortURL.defaultExpectation == nil {
+		mmGetShortURL.defaultExpectation = &UrlsKeeperMockGetShortURLExpectation{mock: mmGetShortURL.mock}
+	}
+	mmGetShortURL.defaultExpectation.results = &UrlsKeeperMockGetShortURLResults{s1, err}
+	mmGetShortURL.defaultExpectation.returnOrigin = minimock.CallerInfo(1)
+	return mmGetShortURL.mock
+}
+
+// Set uses given function f to mock the UrlsKeeper.GetShortURL method
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) Set(f func(ctx context.Context, originalURL string) (s1 string, err error)) *UrlsKeeperMock {
+	if mmGetShortURL.defaultExpectation != nil {
+		mmGetShortURL.mock.t.Fatalf("Default expectation is already set for the UrlsKeeper.GetShortURL method")
+	}
+
+	if len(mmGetShortURL.expectations) > 0 {
+		mmGetShortURL.mock.t.Fatalf("Some expectations are already set for the UrlsKeeper.GetShortURL method")
+	}
+
+	mmGetShortURL.mock.funcGetShortURL = f
+	mmGetShortURL.mock.funcGetShortURLOrigin = minimock.CallerInfo(1)
+	return mmGetShortURL.mock
+}
+
+// When sets expectation for the UrlsKeeper.GetShortURL which will trigger the result defined by the following
+// Then helper
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) When(ctx context.Context, originalURL string) *UrlsKeeperMockGetShortURLExpectation {
+	if mmGetShortURL.mock.funcGetShortURL != nil {
+		mmGetShortURL.mock.t.Fatalf("UrlsKeeperMock.GetShortURL mock is already set by Set")
+	}
+
+	expectation := &UrlsKeeperMockGetShortURLExpectation{
+		mock:               mmGetShortURL.mock,
+		params:             &UrlsKeeperMockGetShortURLParams{ctx, originalURL},
+		expectationOrigins: UrlsKeeperMockGetShortURLExpectationOrigins{origin: minimock.CallerInfo(1)},
+	}
+	mmGetShortURL.expectations = append(mmGetShortURL.expectations, expectation)
+	return expectation
+}
+
+// Then sets up UrlsKeeper.GetShortURL return parameters for the expectation previously defined by the When method
+func (e *UrlsKeeperMockGetShortURLExpectation) Then(s1 string, err error) *UrlsKeeperMock {
+	e.results = &UrlsKeeperMockGetShortURLResults{s1, err}
+	return e.mock
+}
+
+// Times sets number of times UrlsKeeper.GetShortURL should be invoked
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) Times(n uint64) *mUrlsKeeperMockGetShortURL {
+	if n == 0 {
+		mmGetShortURL.mock.t.Fatalf("Times of UrlsKeeperMock.GetShortURL mock can not be zero")
+	}
+	mm_atomic.StoreUint64(&mmGetShortURL.expectedInvocations, n)
+	mmGetShortURL.expectedInvocationsOrigin = minimock.CallerInfo(1)
+	return mmGetShortURL
+}
+
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) invocationsDone() bool {
+	if len(mmGetShortURL.expectations) == 0 && mmGetShortURL.defaultExpectation == nil && mmGetShortURL.mock.funcGetShortURL == nil {
+		return true
+	}
+
+	totalInvocations := mm_atomic.LoadUint64(&mmGetShortURL.mock.afterGetShortURLCounter)
+	expectedInvocations := mm_atomic.LoadUint64(&mmGetShortURL.expectedInvocations)
+
+	return totalInvocations > 0 && (expectedInvocations == 0 || expectedInvocations == totalInvocations)
+}
+
+// GetShortURL implements mm_shorter.UrlsKeeper
+func (mmGetShortURL *UrlsKeeperMock) GetShortURL(ctx context.Context, originalURL string) (s1 string, err error) {
+	mm_atomic.AddUint64(&mmGetShortURL.beforeGetShortURLCounter, 1)
+	defer mm_atomic.AddUint64(&mmGetShortURL.afterGetShortURLCounter, 1)
+
+	mmGetShortURL.t.Helper()
+
+	if mmGetShortURL.inspectFuncGetShortURL != nil {
+		mmGetShortURL.inspectFuncGetShortURL(ctx, originalURL)
+	}
+
+	mm_params := UrlsKeeperMockGetShortURLParams{ctx, originalURL}
+
+	// Record call args
+	mmGetShortURL.GetShortURLMock.mutex.Lock()
+	mmGetShortURL.GetShortURLMock.callArgs = append(mmGetShortURL.GetShortURLMock.callArgs, &mm_params)
+	mmGetShortURL.GetShortURLMock.mutex.Unlock()
+
+	for _, e := range mmGetShortURL.GetShortURLMock.expectations {
+		if minimock.Equal(*e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.s1, e.results.err
+		}
+	}
+
+	if mmGetShortURL.GetShortURLMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmGetShortURL.GetShortURLMock.defaultExpectation.Counter, 1)
+		mm_want := mmGetShortURL.GetShortURLMock.defaultExpectation.params
+		mm_want_ptrs := mmGetShortURL.GetShortURLMock.defaultExpectation.paramPtrs
+
+		mm_got := UrlsKeeperMockGetShortURLParams{ctx, originalURL}
+
+		if mm_want_ptrs != nil {
+
+			if mm_want_ptrs.ctx != nil && !minimock.Equal(*mm_want_ptrs.ctx, mm_got.ctx) {
+				mmGetShortURL.t.Errorf("UrlsKeeperMock.GetShortURL got unexpected parameter ctx, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmGetShortURL.GetShortURLMock.defaultExpectation.expectationOrigins.originCtx, *mm_want_ptrs.ctx, mm_got.ctx, minimock.Diff(*mm_want_ptrs.ctx, mm_got.ctx))
+			}
+
+			if mm_want_ptrs.originalURL != nil && !minimock.Equal(*mm_want_ptrs.originalURL, mm_got.originalURL) {
+				mmGetShortURL.t.Errorf("UrlsKeeperMock.GetShortURL got unexpected parameter originalURL, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmGetShortURL.GetShortURLMock.defaultExpectation.expectationOrigins.originOriginalURL, *mm_want_ptrs.originalURL, mm_got.originalURL, minimock.Diff(*mm_want_ptrs.originalURL, mm_got.originalURL))
+			}
+
+		} else if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmGetShortURL.t.Errorf("UrlsKeeperMock.GetShortURL got unexpected parameters, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+				mmGetShortURL.GetShortURLMock.defaultExpectation.expectationOrigins.origin, *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmGetShortURL.GetShortURLMock.defaultExpectation.results
+		if mm_results == nil {
+			mmGetShortURL.t.Fatal("No results are set for the UrlsKeeperMock.GetShortURL")
+		}
+		return (*mm_results).s1, (*mm_results).err
+	}
+	if mmGetShortURL.funcGetShortURL != nil {
+		return mmGetShortURL.funcGetShortURL(ctx, originalURL)
+	}
+	mmGetShortURL.t.Fatalf("Unexpected call to UrlsKeeperMock.GetShortURL. %v %v", ctx, originalURL)
+	return
+}
+
+// GetShortURLAfterCounter returns a count of finished UrlsKeeperMock.GetShortURL invocations
+func (mmGetShortURL *UrlsKeeperMock) GetShortURLAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmGetShortURL.afterGetShortURLCounter)
+}
+
+// GetShortURLBeforeCounter returns a count of UrlsKeeperMock.GetShortURL invocations
+func (mmGetShortURL *UrlsKeeperMock) GetShortURLBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmGetShortURL.beforeGetShortURLCounter)
+}
+
+// Calls returns a list of arguments used in each call to UrlsKeeperMock.GetShortURL.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmGetShortURL *mUrlsKeeperMockGetShortURL) Calls() []*UrlsKeeperMockGetShortURLParams {
+	mmGetShortURL.mutex.RLock()
+
+	argCopy := make([]*UrlsKeeperMockGetShortURLParams, len(mmGetShortURL.callArgs))
+	copy(argCopy, mmGetShortURL.callArgs)
+
+	mmGetShortURL.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockGetShortURLDone returns true if the count of the GetShortURL invocations corresponds
+// the number of defined expectations
+func (m *UrlsKeeperMock) MinimockGetShortURLDone() bool {
+	if m.GetShortURLMock.optional {
+		// Optional methods provide '0 or more' call count restriction.
+		return true
+	}
+
+	for _, e := range m.GetShortURLMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	return m.GetShortURLMock.invocationsDone()
+}
+
+// MinimockGetShortURLInspect logs each unmet expectation
+func (m *UrlsKeeperMock) MinimockGetShortURLInspect() {
+	for _, e := range m.GetShortURLMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to UrlsKeeperMock.GetShortURL at\n%s with params: %#v", e.expectationOrigins.origin, *e.params)
+		}
+	}
+
+	afterGetShortURLCounter := mm_atomic.LoadUint64(&m.afterGetShortURLCounter)
+	// if default expectation was set then invocations count should be greater than zero
+	if m.GetShortURLMock.defaultExpectation != nil && afterGetShortURLCounter < 1 {
+		if m.GetShortURLMock.defaultExpectation.params == nil {
+			m.t.Errorf("Expected call to UrlsKeeperMock.GetShortURL at\n%s", m.GetShortURLMock.defaultExpectation.returnOrigin)
+		} else {
+			m.t.Errorf("Expected call to UrlsKeeperMock.GetShortURL at\n%s with params: %#v", m.GetShortURLMock.defaultExpectation.expectationOrigins.origin, *m.GetShortURLMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcGetShortURL != nil && afterGetShortURLCounter < 1 {
+		m.t.Errorf("Expected call to UrlsKeeperMock.GetShortURL at\n%s", m.funcGetShortURLOrigin)
+	}
+
+	if !m.GetShortURLMock.invocationsDone() && afterGetShortURLCounter > 0 {
+		m.t.Errorf("Expected %d calls to UrlsKeeperMock.GetShortURL at\n%s but found %d calls",
+			mm_atomic.LoadUint64(&m.GetShortURLMock.expectedInvocations), m.GetShortURLMock.expectedInvocationsOrigin, afterGetShortURLCounter)
+	}
 }
 
 type mUrlsKeeperMockSave struct {
@@ -769,6 +1122,8 @@ func (m *UrlsKeeperMock) MinimockSaveBatchInspect() {
 func (m *UrlsKeeperMock) MinimockFinish() {
 	m.finishOnce.Do(func() {
 		if !m.minimockDone() {
+			m.MinimockGetShortURLInspect()
+
 			m.MinimockSaveInspect()
 
 			m.MinimockSaveBatchInspect()
@@ -795,6 +1150,7 @@ func (m *UrlsKeeperMock) MinimockWait(timeout mm_time.Duration) {
 func (m *UrlsKeeperMock) minimockDone() bool {
 	done := true
 	return done &&
+		m.MinimockGetShortURLDone() &&
 		m.MinimockSaveDone() &&
 		m.MinimockSaveBatchDone()
 }

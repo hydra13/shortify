@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/hydra13/shortify/internal/models"
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
@@ -23,6 +24,12 @@ func New() repository.Repository {
 func (r *InMemoryDB) Add(_ context.Context, key string, value string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+
+	_, found := r.repository[key]
+	if found {
+		return models.ErrConflict
+	}
+
 	r.repository[key] = value
 
 	return nil
@@ -57,6 +64,17 @@ func (r *InMemoryDB) GetAll(_ context.Context) (map[string]string, error) {
 		res[k] = v
 	}
 	return res, nil
+}
+
+func (r *InMemoryDB) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+	for k, v := range r.repository {
+		if v == originalURL {
+			return k, nil
+		}
+	}
+	return "", repository.ErrKeyNotFound
 }
 
 func (r *InMemoryDB) Delete(_ context.Context, key string) error {

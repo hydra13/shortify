@@ -3,6 +3,7 @@ package getshorturlhandler
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -29,33 +30,42 @@ func CreateHandler(shorter Shorter, baseURL string, log zerolog.Logger) http.Han
 
 		longURL := string(body)
 
+		statusCode := http.StatusCreated
 		shortURL, err := shorter.Create(r.Context(), longURL)
 		if err != nil {
-			switch err {
-			case models.ErrValidation:
-				log.Debug().
-					Str("input_url", longURL).
-					Msg("GetShortUrlHandler: validation error")
+			if !errors.Is(err, models.ErrConflict) {
+				switch err {
+				case models.ErrValidation:
+					log.Debug().
+						Str("input_url", longURL).
+						Msg("GetShortUrlHandler: validation error")
 
-				w.WriteHeader(http.StatusBadRequest)
-			case models.ErrInternal:
-				log.Debug().
-					Str("input_url", longURL).
-					Msg("GetShortUrlHandler: save url into repository error")
+					w.WriteHeader(http.StatusBadRequest)
+				case models.ErrInternal:
+					log.Debug().
+						Str("input_url", longURL).
+						Msg("GetShortUrlHandler: save url into repository error")
 
-				w.WriteHeader(http.StatusInternalServerError)
-			default:
-				log.Error().
-					Str("input_url", longURL).
-					Err(err).
-					Msg("GetShortUrlHandler: unhandled error")
+					w.WriteHeader(http.StatusInternalServerError)
+				default:
+					log.Error().
+						Str("input_url", longURL).
+						Err(err).
+						Msg("GetShortUrlHandler: unhandled error")
+				}
+
+				return
 			}
 
-			return
+			log.Debug().
+				Str("input_url", longURL).
+				Msg("GetShortUrlHandler: url already exists")
+
+			statusCode = http.StatusConflict
 		}
 
 		w.Header().Add("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(statusCode)
 		_, err = w.Write([]byte(shortURL))
 		if err != nil {
 			log.Error().

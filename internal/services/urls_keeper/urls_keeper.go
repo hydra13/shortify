@@ -50,3 +50,7 @@ func (uk *UrlsKeeper) Get(
 func (uk *UrlsKeeper) Delete(ctx context.Context, shortURL string) error {
 	return uk.repo.Delete(ctx, shortURL)
 }
+
+func (uk *UrlsKeeper) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	return uk.repo.GetShortURL(ctx, originalURL)
+}
