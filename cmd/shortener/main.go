@@ -16,19 +16,31 @@ import (
 	ping "github.com/hydra13/shortify/internal/handlers/ping_handler"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
-	db "github.com/hydra13/shortify/internal/repositories/file_storage"
+	repository "github.com/hydra13/shortify/internal/repositories"
+	dbStorage "github.com/hydra13/shortify/internal/repositories/db_storage"
+	fileStorage "github.com/hydra13/shortify/internal/repositories/file_storage"
+	inmemorydb "github.com/hydra13/shortify/internal/repositories/inmemory_db"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
 	validator "github.com/hydra13/shortify/internal/services/url_validator"
 	urlsKeeper "github.com/hydra13/shortify/internal/services/urls_keeper"
 )
 
+type Mode int
+
+const (
+	ModeInMemory Mode = iota + 1
+	ModeFileStorage
+	ModeDBStorage
+)
+
 var (
-	serverAddr  string
-	baseURL     string = "http://localhost:8080"
-	fileStorage string = "./storage.json"
-	dbDSN       string = "postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable"
-	dbDriver    string = "pgx"
+	serverAddr      string
+	baseURL         string = "http://localhost:8080"
+	fileStoragePath string = "./storage.json"
+	dbDSN           string = "postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable"
+	dbDriver        string = "pgx"
+	currentMode     Mode   = ModeInMemory
 )
 
 func main() {
@@ -45,7 +57,7 @@ func main() {
 		}
 	}()
 
-	repo, err := db.New(fileStorage, log)
+	repo, err := getRepository(dbInstance, log)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to init repo")
 	}
@@ -85,7 +97,11 @@ func parseConfigs() {
 			return nil
 		}
 
-		fileStorage = path
+		fileStoragePath = path
+
+		if currentMode <= ModeFileStorage {
+			currentMode = ModeFileStorage
+		}
 
 		return nil
 	})
@@ -109,6 +125,10 @@ func parseConfigs() {
 
 		dbDSN = dsn
 
+		if currentMode <= ModeDBStorage {
+			currentMode = ModeDBStorage
+		}
+
 		return nil
 	})
 
@@ -123,10 +143,40 @@ func parseConfigs() {
 	}
 
 	if filePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		fileStorage = filePath
+		fileStoragePath = filePath
+
+		if currentMode <= ModeFileStorage {
+			currentMode = ModeFileStorage
+		}
 	}
 
 	if dsn, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		dbDSN = dsn
+
+		if currentMode <= ModeDBStorage {
+			currentMode = ModeDBStorage
+		}
 	}
+}
+
+func getRepository(dbInstance *sql.DB, log zerolog.Logger) (repository.Repository, error) {
+	switch currentMode {
+	case ModeDBStorage:
+		repo, err := dbStorage.New(dbInstance, log)
+		if err != nil {
+			return nil, err
+		}
+
+		return repo, nil
+	case ModeFileStorage:
+		repo, err := fileStorage.New(fileStoragePath, log)
+		if err != nil {
+			return nil, err
+		}
+
+		return repo, nil
+	default:
+	}
+
+	return inmemorydb.New(), nil
 }
