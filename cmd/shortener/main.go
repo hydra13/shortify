@@ -13,6 +13,7 @@ import (
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
+	shortUrlsBatchHandler "github.com/hydra13/shortify/internal/handlers/get_short_urls_batch_handler"
 	ping "github.com/hydra13/shortify/internal/handlers/ping_handler"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
@@ -70,6 +71,7 @@ func main() {
 	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
 	getShortURLHandler := shortUrlHandler.CreateHandler(s, baseURL, log)
 	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, baseURL, log)
+	getShortURLSBatchHandler := shortUrlsBatchHandler.CreateHandler(s, baseURL, log)
 
 	r := chi.NewRouter()
 
@@ -83,8 +85,9 @@ func main() {
 	}
 	r.Get("/{id}", getLongURLHandler)
 
-	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", getShortURLbyJSONHandler)
+	r.Route("/api/shorten", func(r chi.Router) {
+		r.Post("/", getShortURLbyJSONHandler)
+		r.Post("/batch", getShortURLSBatchHandler)
 	})
 
 	http.ListenAndServe(serverAddr, r)
