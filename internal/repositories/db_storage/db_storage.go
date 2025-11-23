@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/hydra13/shortify/internal/models"
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
@@ -46,7 +45,7 @@ func (dbs *DBStorage) Add(ctx context.Context, key string, value string) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-			return models.ErrConflict
+			return repository.ErrConflict
 		}
 
 		log.

@@ -8,6 +8,7 @@ import (
 var (
 	ErrKeyNotFound    = errors.New("error: key not found")
 	ErrImplementation = errors.New("error: not implemented")
+	ErrConflict       = errors.New("error: conflict")
 )
 
 type Repository interface {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/hydra13/shortify/internal/models"
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
@@ -27,7 +26,7 @@ func (r *InMemoryDB) Add(_ context.Context, key string, value string) error {
 
 	_, found := r.repository[key]
 	if found {
-		return models.ErrConflict
+		return repository.ErrConflict
 	}
 
 	r.repository[key] = value

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/hydra13/shortify/internal/models"
+	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
 type Generator interface {
@@ -59,7 +60,7 @@ func (s Shorter) Create(ctx context.Context, long string) (string, error) {
 
 	err := s.keeper.Save(ctx, long, shortID)
 	if err != nil {
-		if errors.Is(err, models.ErrConflict) {
+		if errors.Is(err, repository.ErrConflict) {
 			shortID, err = s.keeper.GetShortURL(ctx, long)
 			if err != nil {
 				s.log.Error().
