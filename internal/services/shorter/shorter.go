@@ -3,11 +3,13 @@ package shorter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog"
 
 	"github.com/hydra13/shortify/internal/models"
+	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
 type Generator interface {
@@ -16,6 +18,8 @@ type Generator interface {
 
 type UrlsKeeper interface {
 	Save(ctx context.Context, originalURL string, shortURL string) error
+	SaveBatch(ctx context.Context, urls map[string]string) error
+	GetShortURL(ctx context.Context, originalURL string) (string, error)
 }
 
 type URLValidator interface {
@@ -56,6 +60,21 @@ func (s Shorter) Create(ctx context.Context, long string) (string, error) {
 
 	err := s.keeper.Save(ctx, long, shortID)
 	if err != nil {
+		if errors.Is(err, repository.ErrConflict) {
+			shortID, err = s.keeper.GetShortURL(ctx, long)
+			if err != nil {
+				s.log.Error().
+					Str("long_url", long).
+					Str("short_url", shortURL).
+					Err(err).
+					Msg("Error get shortURL from repository during conflict")
+
+				return "", models.ErrInternal
+			}
+
+			return fmt.Sprintf(`%s/%s`, s.baseURL, shortID), models.ErrConflict
+		}
+
 		s.log.Error().
 			Str("long_url", long).
 			Str("short_url", shortURL).
@@ -65,5 +84,34 @@ func (s Shorter) Create(ctx context.Context, long string) (string, error) {
 		return "", models.ErrInternal
 	}
 
-	return shortURL, nil
+	return shortURL, err
+}
+
+func (s Shorter) CreateBatch(ctx context.Context, longURLs map[string]string) (map[string]string, error) {
+	shortURLs := make(map[string]string, len(longURLs))
+	pairURLs := make(map[string]string, len(longURLs))
+
+	for correlationID, longURL := range longURLs {
+		if !s.validator.Validate(longURL) {
+			return nil, models.ErrValidation
+		}
+
+		shortID := s.generator.GenerateShortID(longURL)
+		shortURL := fmt.Sprintf(`%s/%s`, s.baseURL, shortID)
+
+		shortURLs[correlationID] = shortURL
+		pairURLs[shortID] = longURL
+	}
+
+	err := s.keeper.SaveBatch(ctx, pairURLs)
+	if err != nil {
+		s.log.Error().
+			Interface("pair_urls", pairURLs).
+			Err(err).
+			Msg("Error save urls into repository")
+
+		return nil, models.ErrInternal
+	}
+
+	return shortURLs, nil
 }

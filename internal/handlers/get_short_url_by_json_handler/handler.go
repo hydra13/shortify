@@ -4,6 +4,7 @@ package getshorturlbyjsonhandler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/rs/zerolog"
@@ -36,33 +37,42 @@ func CreateHandler(shorter Shorter, baseURL string, log zerolog.Logger) http.Han
 			return
 		}
 
+		statusCode := http.StatusCreated
 		shortURL, err := shorter.Create(r.Context(), req.URL)
 		if err != nil {
-			switch err {
-			case models.ErrValidation:
-				log.Debug().
-					Str("input_url", req.URL).
-					Msg("GetShortUrlByJsonHandler: validation error")
+			if !errors.Is(err, models.ErrConflict) {
+				switch err {
+				case models.ErrValidation:
+					log.Debug().
+						Str("input_url", req.URL).
+						Msg("GetShortUrlByJsonHandler: validation error")
 
-				w.WriteHeader(http.StatusBadRequest)
-			case models.ErrInternal:
-				log.Debug().
-					Str("input_url", req.URL).
-					Msg("GetShortUrlByJsonHandler: save url into repository error")
+					w.WriteHeader(http.StatusBadRequest)
+				case models.ErrInternal:
+					log.Debug().
+						Str("input_url", req.URL).
+						Msg("GetShortUrlByJsonHandler: save url into repository error")
 
-				w.WriteHeader(http.StatusInternalServerError)
-			default:
-				log.Error().
-					Str("input_url", req.URL).
-					Err(err).
-					Msg("GetShortUrlByJsonHandler: unhandled error")
+					w.WriteHeader(http.StatusInternalServerError)
+				default:
+					log.Error().
+						Str("input_url", req.URL).
+						Err(err).
+						Msg("GetShortUrlByJsonHandler: unhandled error")
+				}
+
+				return
 			}
 
-			return
+			log.Debug().
+				Str("input_url", req.URL).
+				Msg("GetShortUrlByJsonHandler: url already exist")
+
+			statusCode = http.StatusConflict
 		}
 
 		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(statusCode)
 		err = json.NewEncoder(w).Encode(JSONResponse{Result: shortURL})
 		if err != nil {
 			log.Error().

@@ -35,12 +35,22 @@ func (fs *FileStorage) Add(ctx context.Context, key string, value string) error 
 	return fs.write(ctx)
 }
 
+func (fs *FileStorage) AddBatch(ctx context.Context, batch map[string]string) error {
+	fs.inMemory.AddBatch(ctx, batch)
+
+	return fs.write(ctx)
+}
+
 func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
 	return fs.inMemory.Get(ctx, key)
 }
 
 func (fs *FileStorage) GetAll(ctx context.Context) (map[string]string, error) {
 	return fs.inMemory.GetAll(ctx)
+}
+
+func (fs *FileStorage) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	return fs.inMemory.GetShortURL(ctx, originalURL)
 }
 
 func (fs *FileStorage) Delete(ctx context.Context, key string) error {

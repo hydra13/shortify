@@ -23,8 +23,23 @@ func New() repository.Repository {
 func (r *InMemoryDB) Add(_ context.Context, key string, value string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+
+	_, found := r.repository[key]
+	if found {
+		return repository.ErrConflict
+	}
+
 	r.repository[key] = value
 
+	return nil
+}
+
+func (r *InMemoryDB) AddBatch(_ context.Context, keyValue map[string]string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for k, v := range keyValue {
+		r.repository[k] = v
+	}
 	return nil
 }
 
@@ -48,6 +63,17 @@ func (r *InMemoryDB) GetAll(_ context.Context) (map[string]string, error) {
 		res[k] = v
 	}
 	return res, nil
+}
+
+func (r *InMemoryDB) GetShortURL(ctx context.Context, originalURL string) (string, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+	for k, v := range r.repository {
+		if v == originalURL {
+			return k, nil
+		}
+	}
+	return "", repository.ErrKeyNotFound
 }
 
 func (r *InMemoryDB) Delete(_ context.Context, key string) error {

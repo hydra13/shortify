@@ -63,3 +63,16 @@ curl -v -X POST http://localhost:8080/api/shorten \
 ```sh
 curl -v http://localhost:8080/{xxx}
 ```
+
+## DB
+
+Для развертывания PostgreSQL используется:
+```bash
+docker run -d \
+  --name local-postgres \
+  -p 5432:5432 \
+  -e POSTGRES_PASSWORD=postgres \
+  -e PGDATA=/var/lib/postgresql/data/pgdata \
+  -v ./.db:/var/lib/postgresql/data \
+  postgres:15-alpine
+```
