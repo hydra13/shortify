@@ -1,4 +1,4 @@
-//go:generate minimock -i .UrlsKeeper,.AuthService -o mocks -s _mock.go -g
+//go:generate minimock -i .UrlsKeeper,.Shorter -o mocks -s _mock.go -g
 package getuserurlshandler
 
 import (
@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	authContext "github.com/hydra13/shortify/internal/services/auth_context"
 	"github.com/rs/zerolog"
+
+	authContext "github.com/hydra13/shortify/internal/services/auth_context"
 )
 
 type UrlsKeeper interface {
@@ -59,9 +60,9 @@ func CreateHandler(urlsKeeper UrlsKeeper, shorter Shorter, log zerolog.Logger) h
 func toResponse(shorter Shorter, urls map[string]string) []ResponseRecord {
 	result := make([]ResponseRecord, 0, len(urls))
 
-	for shortURL, originalURL := range urls {
+	for shortID, originalURL := range urls {
 		result = append(result, ResponseRecord{
-			ShortURL:    shorter.CreateShortURL(shortURL),
+			ShortURL:    shorter.CreateShortURL(shortID),
 			OriginalURL: originalURL,
 		})
 	}
