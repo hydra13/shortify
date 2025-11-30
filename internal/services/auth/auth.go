@@ -40,7 +40,7 @@ func (a *AuthService) GetUser(r *http.Request) (userID string, err error) {
 func (a *AuthService) GetOrCreateUser(r *http.Request) (userID string, isNew bool, err error) {
 	userID, err = a.GetUser(r)
 	if err != nil {
-		if err != models.ErrTokenNotFound {
+		if err == models.ErrTokenNotFound {
 			return a.generateUserID(), true, nil
 		}
 
