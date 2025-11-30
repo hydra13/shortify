@@ -34,13 +34,14 @@ func New(db DB, log zerolog.Logger) (repository.Repository, error) {
 	return dbs, nil
 }
 
-func (dbs *DBStorage) Add(ctx context.Context, key string, value string) error {
+func (dbs *DBStorage) Add(ctx context.Context, shortURL string, originalURL string, userID string) error {
 	res, err := dbs.db.ExecContext(
 		ctx,
-		`INSERT INTO shortify_urls (short_url, original_url)
-		VALUES ($1, $2)`,
-		key,
-		value,
+		`INSERT INTO shortify_urls (short_url, original_url, user_id)
+		VALUES ($1, $2, $3)`,
+		shortURL,
+		originalURL,
+		userID,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -50,6 +51,8 @@ func (dbs *DBStorage) Add(ctx context.Context, key string, value string) error {
 
 		log.
 			Err(err).
+			Str("short_url", shortURL).
+			Str("original_url", originalURL).
 			Msg("DBStorage: error inserting data to db")
 
 		return err
@@ -63,7 +66,7 @@ func (dbs *DBStorage) Add(ctx context.Context, key string, value string) error {
 	return nil
 }
 
-func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string) error {
+func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string, userID string) error {
 	tx, err := dbs.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -72,15 +75,18 @@ func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string) err
 	for shortURL, originalURL := range batch {
 		_, err = tx.ExecContext(
 			ctx,
-			"INSERT INTO shortify_urls (short_url, original_url) VALUES ($1, $2)",
+			"INSERT INTO shortify_urls (short_url, original_url, user_id) VALUES ($1, $2, $3)",
 			shortURL,
 			originalURL,
+			userID,
 		)
 		if err != nil {
 			tx.Rollback()
 
 			log.
 				Err(err).
+				Str("short_url", shortURL).
+				Str("original_url", originalURL).
 				Msg("DBStorage: error inserting batch data to db")
 
 			return err
@@ -112,6 +118,42 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]string, error) {
 	rows, err := dbs.db.QueryContext(
 		ctx,
 		"SELECT short_url, original_url FROM shortify_urls",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]string, 0)
+	for rows.Next() {
+		var shortURL, originalURL string
+
+		if err := rows.Scan(&shortURL, &originalURL); err != nil {
+			log.
+				Err(err).
+				Msg("DBStorage: error scanning row from rows")
+
+			return nil, err
+		}
+
+		result[shortURL] = originalURL
+	}
+
+	if rows.Err() != nil {
+		log.
+			Err(err).
+			Msg("DBStorage: error iterating over rows")
+		return nil, rows.Err()
+	}
+
+	return result, nil
+}
+
+func (dbs *DBStorage) GetAllByUser(ctx context.Context, userID string) (map[string]string, error) {
+	rows, err := dbs.db.QueryContext(
+		ctx,
+		"SELECT short_url, original_url FROM shortify_urls WHERE user_id = $1",
+		userID,
 	)
 	if err != nil {
 		return nil, err

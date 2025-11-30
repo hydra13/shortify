@@ -16,15 +16,16 @@ func New(repo repository.Repository) *UrlsKeeper {
 	}
 }
 
-func (uk *UrlsKeeper) Save(ctx context.Context, originalURL, shortID string) error {
-	return uk.repo.Add(ctx, shortID, originalURL)
+func (uk *UrlsKeeper) Save(ctx context.Context, originalURL, shortID, userID string) error {
+	return uk.repo.Add(ctx, shortID, originalURL, userID)
 }
 
 func (uk *UrlsKeeper) SaveBatch(
 	ctx context.Context,
 	urls map[string]string,
+	userID string,
 ) error {
-	return uk.repo.AddBatch(ctx, urls)
+	return uk.repo.AddBatch(ctx, urls, userID)
 }
 
 func (uk *UrlsKeeper) Get(
@@ -45,6 +46,10 @@ func (uk *UrlsKeeper) Get(
 	}
 
 	return originalURL, true, nil
+}
+
+func (uk *UrlsKeeper) GetAllByUser(ctx context.Context, userID string) (urls map[string]string, err error) {
+	return uk.repo.GetAllByUser(ctx, userID)
 }
 
 func (uk *UrlsKeeper) Delete(ctx context.Context, shortURL string) error {

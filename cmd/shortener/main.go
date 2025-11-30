@@ -16,9 +16,12 @@ import (
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
 	shortUrlsBatchHandler "github.com/hydra13/shortify/internal/handlers/get_short_urls_batch_handler"
+	userUrlsHandler "github.com/hydra13/shortify/internal/handlers/get_user_urls_handler"
 	ping "github.com/hydra13/shortify/internal/handlers/ping_handler"
+	authMiddleware "github.com/hydra13/shortify/internal/middlewares/auth"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
+	authService "github.com/hydra13/shortify/internal/services/auth"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
 	validator "github.com/hydra13/shortify/internal/services/url_validator"
@@ -50,16 +53,19 @@ func main() {
 	urlValidator := validator.New()
 	uk := urlsKeeper.New(repo)
 	s := shorter.New(urlValidator, uk, generator, conf.BaseURL, log)
+	auth := authService.New()
 
 	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
-	getShortURLHandler := shortUrlHandler.CreateHandler(s, conf.BaseURL, log)
-	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, conf.BaseURL, log)
+	getShortURLHandler := shortUrlHandler.CreateHandler(s, auth, conf.BaseURL, log)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, auth, conf.BaseURL, log)
 	getShortURLSBatchHandler := shortUrlsBatchHandler.CreateHandler(s, conf.BaseURL, log)
+	getUserURLSHandler := userUrlsHandler.CreateHandler(uk, log)
 
 	r := chi.NewRouter()
 
 	r.Use(compresser.CompresserMiddleware)
 	r.Use(logger.NewLoggerMiddleware(log))
+	r.Use(authMiddleware.NewAuthMiddleware(auth, log))
 
 	r.Post("/", getShortURLHandler)
 	if dbInstance != nil {
@@ -68,9 +74,12 @@ func main() {
 	}
 	r.Get("/{id}", getLongURLHandler)
 
-	r.Route("/api/shorten", func(r chi.Router) {
-		r.Post("/", getShortURLbyJSONHandler)
-		r.Post("/batch", getShortURLSBatchHandler)
+	r.Route("/api/", func(r chi.Router) {
+		r.Route("/shorten", func(r chi.Router) {
+			r.Post("/", getShortURLbyJSONHandler)
+			r.Post("/batch", getShortURLSBatchHandler)
+		})
+		r.Get("/user/urls", getUserURLSHandler)
 	})
 
 	log.Fatal().Err(http.ListenAndServe(conf.ServerAddr, r)).Msg("exit")

@@ -1,4 +1,4 @@
-//go:generate minimock -i .Shorter -o mocks -s _mock.go -g
+//go:generate minimock -i .Shorter,.AuthService -o mocks -s _mock.go -g
 package getshorturlhandler
 
 import (
@@ -10,13 +10,18 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/hydra13/shortify/internal/models"
+	authContext "github.com/hydra13/shortify/internal/services/auth_context"
 )
 
 type Shorter interface {
 	Create(ctx context.Context, long string) (string, error)
 }
 
-func CreateHandler(shorter Shorter, baseURL string, log zerolog.Logger) http.HandlerFunc {
+type AuthService interface {
+	SetAuthCookie(w http.ResponseWriter, userID string)
+}
+
+func CreateHandler(shorter Shorter, auth AuthService, baseURL string, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -62,6 +67,11 @@ func CreateHandler(shorter Shorter, baseURL string, log zerolog.Logger) http.Han
 				Msg("GetShortUrlHandler: url already exists")
 
 			statusCode = http.StatusConflict
+		} else {
+			userID, isNew := authContext.GetUserIDFromContext(r.Context())
+			if isNew {
+				auth.SetAuthCookie(w, userID)
+			}
 		}
 
 		w.Header().Add("Content-Type", "text/plain")

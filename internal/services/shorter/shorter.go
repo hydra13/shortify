@@ -10,6 +10,7 @@ import (
 
 	"github.com/hydra13/shortify/internal/models"
 	repository "github.com/hydra13/shortify/internal/repositories"
+	authContext "github.com/hydra13/shortify/internal/services/auth_context"
 )
 
 type Generator interface {
@@ -17,8 +18,8 @@ type Generator interface {
 }
 
 type UrlsKeeper interface {
-	Save(ctx context.Context, originalURL string, shortURL string) error
-	SaveBatch(ctx context.Context, urls map[string]string) error
+	Save(ctx context.Context, originalURL string, shortURL string, userID string) error
+	SaveBatch(ctx context.Context, urls map[string]string, userID string) error
 	GetShortURL(ctx context.Context, originalURL string) (string, error)
 }
 
@@ -55,10 +56,11 @@ func (s Shorter) Create(ctx context.Context, long string) (string, error) {
 		return "", models.ErrValidation
 	}
 
+	userID, _ := authContext.GetUserIDFromContext(ctx)
 	shortID := s.generator.GenerateShortID(long)
 	shortURL := fmt.Sprintf(`%s/%s`, s.baseURL, shortID)
 
-	err := s.keeper.Save(ctx, long, shortID)
+	err := s.keeper.Save(ctx, long, shortID, userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
 			shortID, err = s.keeper.GetShortURL(ctx, long)
@@ -103,7 +105,8 @@ func (s Shorter) CreateBatch(ctx context.Context, longURLs map[string]string) (m
 		pairURLs[shortID] = longURL
 	}
 
-	err := s.keeper.SaveBatch(ctx, pairURLs)
+	userID, _ := authContext.GetUserIDFromContext(ctx)
+	err := s.keeper.SaveBatch(ctx, pairURLs, userID)
 	if err != nil {
 		s.log.Error().
 			Interface("pair_urls", pairURLs).

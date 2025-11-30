@@ -29,14 +29,14 @@ func New(filePath string, log zerolog.Logger) (repository.Repository, error) {
 	return fs, err
 }
 
-func (fs *FileStorage) Add(ctx context.Context, key string, value string) error {
-	fs.inMemory.Add(ctx, key, value)
+func (fs *FileStorage) Add(ctx context.Context, key string, value string, userID string) error {
+	fs.inMemory.Add(ctx, key, value, userID)
 
 	return fs.write(ctx)
 }
 
-func (fs *FileStorage) AddBatch(ctx context.Context, batch map[string]string) error {
-	fs.inMemory.AddBatch(ctx, batch)
+func (fs *FileStorage) AddBatch(ctx context.Context, batch map[string]string, userID string) error {
+	fs.inMemory.AddBatch(ctx, batch, userID)
 
 	return fs.write(ctx)
 }
@@ -47,6 +47,10 @@ func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
 
 func (fs *FileStorage) GetAll(ctx context.Context) (map[string]string, error) {
 	return fs.inMemory.GetAll(ctx)
+}
+
+func (fs *FileStorage) GetAllByUser(ctx context.Context, userID string) (map[string]string, error) {
+	return fs.inMemory.GetAllByUser(ctx, userID)
 }
 
 func (fs *FileStorage) GetShortURL(ctx context.Context, originalURL string) (string, error) {

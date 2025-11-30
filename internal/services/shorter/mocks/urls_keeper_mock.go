@@ -23,16 +23,16 @@ type UrlsKeeperMock struct {
 	beforeGetShortURLCounter uint64
 	GetShortURLMock          mUrlsKeeperMockGetShortURL
 
-	funcSave          func(ctx context.Context, originalURL string, shortURL string) (err error)
+	funcSave          func(ctx context.Context, originalURL string, shortURL string, userID string) (err error)
 	funcSaveOrigin    string
-	inspectFuncSave   func(ctx context.Context, originalURL string, shortURL string)
+	inspectFuncSave   func(ctx context.Context, originalURL string, shortURL string, userID string)
 	afterSaveCounter  uint64
 	beforeSaveCounter uint64
 	SaveMock          mUrlsKeeperMockSave
 
-	funcSaveBatch          func(ctx context.Context, urls map[string]string) (err error)
+	funcSaveBatch          func(ctx context.Context, urls map[string]string, userID string) (err error)
 	funcSaveBatchOrigin    string
-	inspectFuncSaveBatch   func(ctx context.Context, urls map[string]string)
+	inspectFuncSaveBatch   func(ctx context.Context, urls map[string]string, userID string)
 	afterSaveBatchCounter  uint64
 	beforeSaveBatchCounter uint64
 	SaveBatchMock          mUrlsKeeperMockSaveBatch
@@ -432,6 +432,7 @@ type UrlsKeeperMockSaveParams struct {
 	ctx         context.Context
 	originalURL string
 	shortURL    string
+	userID      string
 }
 
 // UrlsKeeperMockSaveParamPtrs contains pointers to parameters of the UrlsKeeper.Save
@@ -439,6 +440,7 @@ type UrlsKeeperMockSaveParamPtrs struct {
 	ctx         *context.Context
 	originalURL *string
 	shortURL    *string
+	userID      *string
 }
 
 // UrlsKeeperMockSaveResults contains results of the UrlsKeeper.Save
@@ -452,6 +454,7 @@ type UrlsKeeperMockSaveExpectationOrigins struct {
 	originCtx         string
 	originOriginalURL string
 	originShortURL    string
+	originUserID      string
 }
 
 // Marks this method to be optional. The default behavior of any method with Return() is '1 or more', meaning
@@ -465,7 +468,7 @@ func (mmSave *mUrlsKeeperMockSave) Optional() *mUrlsKeeperMockSave {
 }
 
 // Expect sets up expected params for UrlsKeeper.Save
-func (mmSave *mUrlsKeeperMockSave) Expect(ctx context.Context, originalURL string, shortURL string) *mUrlsKeeperMockSave {
+func (mmSave *mUrlsKeeperMockSave) Expect(ctx context.Context, originalURL string, shortURL string, userID string) *mUrlsKeeperMockSave {
 	if mmSave.mock.funcSave != nil {
 		mmSave.mock.t.Fatalf("UrlsKeeperMock.Save mock is already set by Set")
 	}
@@ -478,7 +481,7 @@ func (mmSave *mUrlsKeeperMockSave) Expect(ctx context.Context, originalURL strin
 		mmSave.mock.t.Fatalf("UrlsKeeperMock.Save mock is already set by ExpectParams functions")
 	}
 
-	mmSave.defaultExpectation.params = &UrlsKeeperMockSaveParams{ctx, originalURL, shortURL}
+	mmSave.defaultExpectation.params = &UrlsKeeperMockSaveParams{ctx, originalURL, shortURL, userID}
 	mmSave.defaultExpectation.expectationOrigins.origin = minimock.CallerInfo(1)
 	for _, e := range mmSave.expectations {
 		if minimock.Equal(e.params, mmSave.defaultExpectation.params) {
@@ -558,8 +561,31 @@ func (mmSave *mUrlsKeeperMockSave) ExpectShortURLParam3(shortURL string) *mUrlsK
 	return mmSave
 }
 
+// ExpectUserIDParam4 sets up expected param userID for UrlsKeeper.Save
+func (mmSave *mUrlsKeeperMockSave) ExpectUserIDParam4(userID string) *mUrlsKeeperMockSave {
+	if mmSave.mock.funcSave != nil {
+		mmSave.mock.t.Fatalf("UrlsKeeperMock.Save mock is already set by Set")
+	}
+
+	if mmSave.defaultExpectation == nil {
+		mmSave.defaultExpectation = &UrlsKeeperMockSaveExpectation{}
+	}
+
+	if mmSave.defaultExpectation.params != nil {
+		mmSave.mock.t.Fatalf("UrlsKeeperMock.Save mock is already set by Expect")
+	}
+
+	if mmSave.defaultExpectation.paramPtrs == nil {
+		mmSave.defaultExpectation.paramPtrs = &UrlsKeeperMockSaveParamPtrs{}
+	}
+	mmSave.defaultExpectation.paramPtrs.userID = &userID
+	mmSave.defaultExpectation.expectationOrigins.originUserID = minimock.CallerInfo(1)
+
+	return mmSave
+}
+
 // Inspect accepts an inspector function that has same arguments as the UrlsKeeper.Save
-func (mmSave *mUrlsKeeperMockSave) Inspect(f func(ctx context.Context, originalURL string, shortURL string)) *mUrlsKeeperMockSave {
+func (mmSave *mUrlsKeeperMockSave) Inspect(f func(ctx context.Context, originalURL string, shortURL string, userID string)) *mUrlsKeeperMockSave {
 	if mmSave.mock.inspectFuncSave != nil {
 		mmSave.mock.t.Fatalf("Inspect function is already set for UrlsKeeperMock.Save")
 	}
@@ -584,7 +610,7 @@ func (mmSave *mUrlsKeeperMockSave) Return(err error) *UrlsKeeperMock {
 }
 
 // Set uses given function f to mock the UrlsKeeper.Save method
-func (mmSave *mUrlsKeeperMockSave) Set(f func(ctx context.Context, originalURL string, shortURL string) (err error)) *UrlsKeeperMock {
+func (mmSave *mUrlsKeeperMockSave) Set(f func(ctx context.Context, originalURL string, shortURL string, userID string) (err error)) *UrlsKeeperMock {
 	if mmSave.defaultExpectation != nil {
 		mmSave.mock.t.Fatalf("Default expectation is already set for the UrlsKeeper.Save method")
 	}
@@ -600,14 +626,14 @@ func (mmSave *mUrlsKeeperMockSave) Set(f func(ctx context.Context, originalURL s
 
 // When sets expectation for the UrlsKeeper.Save which will trigger the result defined by the following
 // Then helper
-func (mmSave *mUrlsKeeperMockSave) When(ctx context.Context, originalURL string, shortURL string) *UrlsKeeperMockSaveExpectation {
+func (mmSave *mUrlsKeeperMockSave) When(ctx context.Context, originalURL string, shortURL string, userID string) *UrlsKeeperMockSaveExpectation {
 	if mmSave.mock.funcSave != nil {
 		mmSave.mock.t.Fatalf("UrlsKeeperMock.Save mock is already set by Set")
 	}
 
 	expectation := &UrlsKeeperMockSaveExpectation{
 		mock:               mmSave.mock,
-		params:             &UrlsKeeperMockSaveParams{ctx, originalURL, shortURL},
+		params:             &UrlsKeeperMockSaveParams{ctx, originalURL, shortURL, userID},
 		expectationOrigins: UrlsKeeperMockSaveExpectationOrigins{origin: minimock.CallerInfo(1)},
 	}
 	mmSave.expectations = append(mmSave.expectations, expectation)
@@ -642,17 +668,17 @@ func (mmSave *mUrlsKeeperMockSave) invocationsDone() bool {
 }
 
 // Save implements mm_shorter.UrlsKeeper
-func (mmSave *UrlsKeeperMock) Save(ctx context.Context, originalURL string, shortURL string) (err error) {
+func (mmSave *UrlsKeeperMock) Save(ctx context.Context, originalURL string, shortURL string, userID string) (err error) {
 	mm_atomic.AddUint64(&mmSave.beforeSaveCounter, 1)
 	defer mm_atomic.AddUint64(&mmSave.afterSaveCounter, 1)
 
 	mmSave.t.Helper()
 
 	if mmSave.inspectFuncSave != nil {
-		mmSave.inspectFuncSave(ctx, originalURL, shortURL)
+		mmSave.inspectFuncSave(ctx, originalURL, shortURL, userID)
 	}
 
-	mm_params := UrlsKeeperMockSaveParams{ctx, originalURL, shortURL}
+	mm_params := UrlsKeeperMockSaveParams{ctx, originalURL, shortURL, userID}
 
 	// Record call args
 	mmSave.SaveMock.mutex.Lock()
@@ -671,7 +697,7 @@ func (mmSave *UrlsKeeperMock) Save(ctx context.Context, originalURL string, shor
 		mm_want := mmSave.SaveMock.defaultExpectation.params
 		mm_want_ptrs := mmSave.SaveMock.defaultExpectation.paramPtrs
 
-		mm_got := UrlsKeeperMockSaveParams{ctx, originalURL, shortURL}
+		mm_got := UrlsKeeperMockSaveParams{ctx, originalURL, shortURL, userID}
 
 		if mm_want_ptrs != nil {
 
@@ -690,6 +716,11 @@ func (mmSave *UrlsKeeperMock) Save(ctx context.Context, originalURL string, shor
 					mmSave.SaveMock.defaultExpectation.expectationOrigins.originShortURL, *mm_want_ptrs.shortURL, mm_got.shortURL, minimock.Diff(*mm_want_ptrs.shortURL, mm_got.shortURL))
 			}
 
+			if mm_want_ptrs.userID != nil && !minimock.Equal(*mm_want_ptrs.userID, mm_got.userID) {
+				mmSave.t.Errorf("UrlsKeeperMock.Save got unexpected parameter userID, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmSave.SaveMock.defaultExpectation.expectationOrigins.originUserID, *mm_want_ptrs.userID, mm_got.userID, minimock.Diff(*mm_want_ptrs.userID, mm_got.userID))
+			}
+
 		} else if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
 			mmSave.t.Errorf("UrlsKeeperMock.Save got unexpected parameters, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
 				mmSave.SaveMock.defaultExpectation.expectationOrigins.origin, *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
@@ -702,9 +733,9 @@ func (mmSave *UrlsKeeperMock) Save(ctx context.Context, originalURL string, shor
 		return (*mm_results).err
 	}
 	if mmSave.funcSave != nil {
-		return mmSave.funcSave(ctx, originalURL, shortURL)
+		return mmSave.funcSave(ctx, originalURL, shortURL, userID)
 	}
-	mmSave.t.Fatalf("Unexpected call to UrlsKeeperMock.Save. %v %v %v", ctx, originalURL, shortURL)
+	mmSave.t.Fatalf("Unexpected call to UrlsKeeperMock.Save. %v %v %v %v", ctx, originalURL, shortURL, userID)
 	return
 }
 
@@ -802,14 +833,16 @@ type UrlsKeeperMockSaveBatchExpectation struct {
 
 // UrlsKeeperMockSaveBatchParams contains parameters of the UrlsKeeper.SaveBatch
 type UrlsKeeperMockSaveBatchParams struct {
-	ctx  context.Context
-	urls map[string]string
+	ctx    context.Context
+	urls   map[string]string
+	userID string
 }
 
 // UrlsKeeperMockSaveBatchParamPtrs contains pointers to parameters of the UrlsKeeper.SaveBatch
 type UrlsKeeperMockSaveBatchParamPtrs struct {
-	ctx  *context.Context
-	urls *map[string]string
+	ctx    *context.Context
+	urls   *map[string]string
+	userID *string
 }
 
 // UrlsKeeperMockSaveBatchResults contains results of the UrlsKeeper.SaveBatch
@@ -819,9 +852,10 @@ type UrlsKeeperMockSaveBatchResults struct {
 
 // UrlsKeeperMockSaveBatchOrigins contains origins of expectations of the UrlsKeeper.SaveBatch
 type UrlsKeeperMockSaveBatchExpectationOrigins struct {
-	origin     string
-	originCtx  string
-	originUrls string
+	origin       string
+	originCtx    string
+	originUrls   string
+	originUserID string
 }
 
 // Marks this method to be optional. The default behavior of any method with Return() is '1 or more', meaning
@@ -835,7 +869,7 @@ func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Optional() *mUrlsKeeperMockSaveBatc
 }
 
 // Expect sets up expected params for UrlsKeeper.SaveBatch
-func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Expect(ctx context.Context, urls map[string]string) *mUrlsKeeperMockSaveBatch {
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Expect(ctx context.Context, urls map[string]string, userID string) *mUrlsKeeperMockSaveBatch {
 	if mmSaveBatch.mock.funcSaveBatch != nil {
 		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
 	}
@@ -848,7 +882,7 @@ func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Expect(ctx context.Context, urls ma
 		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by ExpectParams functions")
 	}
 
-	mmSaveBatch.defaultExpectation.params = &UrlsKeeperMockSaveBatchParams{ctx, urls}
+	mmSaveBatch.defaultExpectation.params = &UrlsKeeperMockSaveBatchParams{ctx, urls, userID}
 	mmSaveBatch.defaultExpectation.expectationOrigins.origin = minimock.CallerInfo(1)
 	for _, e := range mmSaveBatch.expectations {
 		if minimock.Equal(e.params, mmSaveBatch.defaultExpectation.params) {
@@ -905,8 +939,31 @@ func (mmSaveBatch *mUrlsKeeperMockSaveBatch) ExpectUrlsParam2(urls map[string]st
 	return mmSaveBatch
 }
 
+// ExpectUserIDParam3 sets up expected param userID for UrlsKeeper.SaveBatch
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) ExpectUserIDParam3(userID string) *mUrlsKeeperMockSaveBatch {
+	if mmSaveBatch.mock.funcSaveBatch != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
+	}
+
+	if mmSaveBatch.defaultExpectation == nil {
+		mmSaveBatch.defaultExpectation = &UrlsKeeperMockSaveBatchExpectation{}
+	}
+
+	if mmSaveBatch.defaultExpectation.params != nil {
+		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Expect")
+	}
+
+	if mmSaveBatch.defaultExpectation.paramPtrs == nil {
+		mmSaveBatch.defaultExpectation.paramPtrs = &UrlsKeeperMockSaveBatchParamPtrs{}
+	}
+	mmSaveBatch.defaultExpectation.paramPtrs.userID = &userID
+	mmSaveBatch.defaultExpectation.expectationOrigins.originUserID = minimock.CallerInfo(1)
+
+	return mmSaveBatch
+}
+
 // Inspect accepts an inspector function that has same arguments as the UrlsKeeper.SaveBatch
-func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Inspect(f func(ctx context.Context, urls map[string]string)) *mUrlsKeeperMockSaveBatch {
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Inspect(f func(ctx context.Context, urls map[string]string, userID string)) *mUrlsKeeperMockSaveBatch {
 	if mmSaveBatch.mock.inspectFuncSaveBatch != nil {
 		mmSaveBatch.mock.t.Fatalf("Inspect function is already set for UrlsKeeperMock.SaveBatch")
 	}
@@ -931,7 +988,7 @@ func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Return(err error) *UrlsKeeperMock {
 }
 
 // Set uses given function f to mock the UrlsKeeper.SaveBatch method
-func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Set(f func(ctx context.Context, urls map[string]string) (err error)) *UrlsKeeperMock {
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Set(f func(ctx context.Context, urls map[string]string, userID string) (err error)) *UrlsKeeperMock {
 	if mmSaveBatch.defaultExpectation != nil {
 		mmSaveBatch.mock.t.Fatalf("Default expectation is already set for the UrlsKeeper.SaveBatch method")
 	}
@@ -947,14 +1004,14 @@ func (mmSaveBatch *mUrlsKeeperMockSaveBatch) Set(f func(ctx context.Context, url
 
 // When sets expectation for the UrlsKeeper.SaveBatch which will trigger the result defined by the following
 // Then helper
-func (mmSaveBatch *mUrlsKeeperMockSaveBatch) When(ctx context.Context, urls map[string]string) *UrlsKeeperMockSaveBatchExpectation {
+func (mmSaveBatch *mUrlsKeeperMockSaveBatch) When(ctx context.Context, urls map[string]string, userID string) *UrlsKeeperMockSaveBatchExpectation {
 	if mmSaveBatch.mock.funcSaveBatch != nil {
 		mmSaveBatch.mock.t.Fatalf("UrlsKeeperMock.SaveBatch mock is already set by Set")
 	}
 
 	expectation := &UrlsKeeperMockSaveBatchExpectation{
 		mock:               mmSaveBatch.mock,
-		params:             &UrlsKeeperMockSaveBatchParams{ctx, urls},
+		params:             &UrlsKeeperMockSaveBatchParams{ctx, urls, userID},
 		expectationOrigins: UrlsKeeperMockSaveBatchExpectationOrigins{origin: minimock.CallerInfo(1)},
 	}
 	mmSaveBatch.expectations = append(mmSaveBatch.expectations, expectation)
@@ -989,17 +1046,17 @@ func (mmSaveBatch *mUrlsKeeperMockSaveBatch) invocationsDone() bool {
 }
 
 // SaveBatch implements mm_shorter.UrlsKeeper
-func (mmSaveBatch *UrlsKeeperMock) SaveBatch(ctx context.Context, urls map[string]string) (err error) {
+func (mmSaveBatch *UrlsKeeperMock) SaveBatch(ctx context.Context, urls map[string]string, userID string) (err error) {
 	mm_atomic.AddUint64(&mmSaveBatch.beforeSaveBatchCounter, 1)
 	defer mm_atomic.AddUint64(&mmSaveBatch.afterSaveBatchCounter, 1)
 
 	mmSaveBatch.t.Helper()
 
 	if mmSaveBatch.inspectFuncSaveBatch != nil {
-		mmSaveBatch.inspectFuncSaveBatch(ctx, urls)
+		mmSaveBatch.inspectFuncSaveBatch(ctx, urls, userID)
 	}
 
-	mm_params := UrlsKeeperMockSaveBatchParams{ctx, urls}
+	mm_params := UrlsKeeperMockSaveBatchParams{ctx, urls, userID}
 
 	// Record call args
 	mmSaveBatch.SaveBatchMock.mutex.Lock()
@@ -1018,7 +1075,7 @@ func (mmSaveBatch *UrlsKeeperMock) SaveBatch(ctx context.Context, urls map[strin
 		mm_want := mmSaveBatch.SaveBatchMock.defaultExpectation.params
 		mm_want_ptrs := mmSaveBatch.SaveBatchMock.defaultExpectation.paramPtrs
 
-		mm_got := UrlsKeeperMockSaveBatchParams{ctx, urls}
+		mm_got := UrlsKeeperMockSaveBatchParams{ctx, urls, userID}
 
 		if mm_want_ptrs != nil {
 
@@ -1030,6 +1087,11 @@ func (mmSaveBatch *UrlsKeeperMock) SaveBatch(ctx context.Context, urls map[strin
 			if mm_want_ptrs.urls != nil && !minimock.Equal(*mm_want_ptrs.urls, mm_got.urls) {
 				mmSaveBatch.t.Errorf("UrlsKeeperMock.SaveBatch got unexpected parameter urls, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
 					mmSaveBatch.SaveBatchMock.defaultExpectation.expectationOrigins.originUrls, *mm_want_ptrs.urls, mm_got.urls, minimock.Diff(*mm_want_ptrs.urls, mm_got.urls))
+			}
+
+			if mm_want_ptrs.userID != nil && !minimock.Equal(*mm_want_ptrs.userID, mm_got.userID) {
+				mmSaveBatch.t.Errorf("UrlsKeeperMock.SaveBatch got unexpected parameter userID, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmSaveBatch.SaveBatchMock.defaultExpectation.expectationOrigins.originUserID, *mm_want_ptrs.userID, mm_got.userID, minimock.Diff(*mm_want_ptrs.userID, mm_got.userID))
 			}
 
 		} else if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
@@ -1044,9 +1106,9 @@ func (mmSaveBatch *UrlsKeeperMock) SaveBatch(ctx context.Context, urls map[strin
 		return (*mm_results).err
 	}
 	if mmSaveBatch.funcSaveBatch != nil {
-		return mmSaveBatch.funcSaveBatch(ctx, urls)
+		return mmSaveBatch.funcSaveBatch(ctx, urls, userID)
 	}
-	mmSaveBatch.t.Fatalf("Unexpected call to UrlsKeeperMock.SaveBatch. %v %v", ctx, urls)
+	mmSaveBatch.t.Fatalf("Unexpected call to UrlsKeeperMock.SaveBatch. %v %v %v", ctx, urls, userID)
 	return
 }
 
