@@ -56,10 +56,10 @@ func main() {
 	auth := authService.New()
 
 	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
-	getShortURLHandler := shortUrlHandler.CreateHandler(s, auth, conf.BaseURL, log)
-	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, auth, conf.BaseURL, log)
-	getShortURLSBatchHandler := shortUrlsBatchHandler.CreateHandler(s, conf.BaseURL, log)
-	getUserURLSHandler := userUrlsHandler.CreateHandler(uk, log)
+	getShortURLHandler := shortUrlHandler.CreateHandler(s, auth, log)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, auth, log)
+	getShortURLSBatchHandler := shortUrlsBatchHandler.CreateHandler(s, log)
+	getUserURLSHandler := userUrlsHandler.CreateHandler(uk, s, log)
 
 	r := chi.NewRouter()
 

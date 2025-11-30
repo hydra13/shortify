@@ -92,7 +92,7 @@ func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 			shorter := tt.shorter(mc)
 
-			handler := CreateHandler(shorter, "http://localhost:8080", log)
+			handler := CreateHandler(shorter, log)
 			srv := httptest.NewServer(handler)
 			defer srv.Close()
 

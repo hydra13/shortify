@@ -21,7 +21,7 @@ type AuthService interface {
 	SetAuthCookie(w http.ResponseWriter, userID string)
 }
 
-func CreateHandler(shorter Shorter, auth AuthService, baseURL string, log zerolog.Logger) http.HandlerFunc {
+func CreateHandler(shorter Shorter, auth AuthService, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

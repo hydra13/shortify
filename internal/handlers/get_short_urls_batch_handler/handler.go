@@ -25,7 +25,7 @@ type ResponseRecord struct {
 	ShortURL      string `json:"short_url"`
 }
 
-func CreateHandler(shorter Shorter, baseURL string, log zerolog.Logger) http.HandlerFunc {
+func CreateHandler(shorter Shorter, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req []RequestRecord
 		err := json.NewDecoder(r.Body).Decode(&req)

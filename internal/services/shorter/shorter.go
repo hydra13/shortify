@@ -58,7 +58,7 @@ func (s Shorter) Create(ctx context.Context, long string) (string, error) {
 
 	userID, _ := authContext.GetUserIDFromContext(ctx)
 	shortID := s.generator.GenerateShortID(long)
-	shortURL := fmt.Sprintf(`%s/%s`, s.baseURL, shortID)
+	shortURL := s.CreateShortURL(shortID)
 
 	err := s.keeper.Save(ctx, long, shortID, userID)
 	if err != nil {
@@ -117,4 +117,8 @@ func (s Shorter) CreateBatch(ctx context.Context, longURLs map[string]string) (m
 	}
 
 	return shortURLs, nil
+}
+
+func (s Shorter) CreateShortURL(shortID string) string {
+	return fmt.Sprintf(`%s/%s`, s.baseURL, shortID)
 }

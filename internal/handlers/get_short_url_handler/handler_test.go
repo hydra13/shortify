@@ -100,7 +100,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 
 			shorter := tt.shorter(mc)
 			auth := tt.auth(mc)
-			handler := CreateHandler(shorter, auth, "http://localhost:8080", log)
+			handler := CreateHandler(shorter, auth, log)
 
 			srv := httptest.NewServer(handler)
 			defer srv.Close()

@@ -29,7 +29,7 @@ type JSONResponse struct {
 	Result string `json:"result"`
 }
 
-func CreateHandler(shorter Shorter, auth AuthService, baseURL string, log zerolog.Logger) http.HandlerFunc {
+func CreateHandler(shorter Shorter, auth AuthService, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
