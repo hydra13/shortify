@@ -25,15 +25,7 @@ type ResponseRecord struct {
 
 func CreateHandler(urlsKeeper UrlsKeeper, shorter Shorter, log zerolog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, isNew := authContext.GetUserIDFromContext(r.Context())
-		if isNew {
-			log.Debug().
-				Msg("GetUserURLsHandler: got request without correct cookie")
-
-			w.WriteHeader(http.StatusUnauthorized)
-
-			return
-		}
+		userID, _ := authContext.GetUserIDFromContext(r.Context())
 
 		urls, err := urlsKeeper.GetAllByUser(r.Context(), userID)
 		if err != nil {
