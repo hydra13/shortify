@@ -9,14 +9,19 @@ import (
 )
 
 type AuthService interface {
-	GetOrCreateUser(request *http.Request) (userID string, inNew bool)
+	GetOrCreateUser(request *http.Request) (userID string, inNew bool, err error)
 	SetAuthCookie(w http.ResponseWriter, userID string)
 }
 
 func NewAuthMiddleware(as AuthService, log zerolog.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			userID, isNew := as.GetOrCreateUser(r)
+			userID, isNew, err := as.GetOrCreateUser(r)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
 
 			log.Debug().
 				Str("user_id", userID).

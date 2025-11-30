@@ -6,5 +6,6 @@ var (
 	ErrValidation    = errors.New("validation error")
 	ErrInternal      = errors.New("internal error")
 	ErrConflict      = errors.New("conflict error")
-	ErrTokenNotValid = errors.New("token expired error")
+	ErrTokenNotValid = errors.New("token validation error")
+	ErrTokenNotFound = errors.New("token not found error")
 )

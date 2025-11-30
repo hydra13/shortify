@@ -31,19 +31,23 @@ func (a *AuthService) GetUser(r *http.Request) (userID string, err error) {
 	fmt.Println("cookie", r.Cookies())
 	cookie, err := r.Cookie(cookieKey)
 	if err != nil {
-		return "", err
+		return "", models.ErrTokenNotFound
 	}
 
 	return a.getUserIDFromToken(cookie.Value)
 }
 
-func (a *AuthService) GetOrCreateUser(r *http.Request) (userID string, isNew bool) {
-	userID, err := a.GetUser(r)
+func (a *AuthService) GetOrCreateUser(r *http.Request) (userID string, isNew bool, err error) {
+	userID, err = a.GetUser(r)
 	if err != nil {
-		return a.generateUserID(), true
+		if err != models.ErrTokenNotFound {
+			return a.generateUserID(), true, nil
+		}
+
+		return "", false, err
 	}
 
-	return userID, false
+	return userID, false, nil
 }
 
 func (a *AuthService) SetAuthCookie(w http.ResponseWriter, userID string) {
