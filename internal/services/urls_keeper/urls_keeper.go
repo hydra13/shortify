@@ -8,18 +8,18 @@ import (
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
-type UrlForDelete struct {
+type URLForDelete struct {
 	shortURL string
 	userID   string
 }
 
 type UrlsKeeper struct {
 	repo     repository.Repository
-	deleteCh chan UrlForDelete
+	deleteCh chan URLForDelete
 }
 
 func New(ctx context.Context, repo repository.Repository) *UrlsKeeper {
-	deleteCh := make(chan UrlForDelete, 1024)
+	deleteCh := make(chan URLForDelete, 1024)
 
 	keeper := &UrlsKeeper{
 		repo:     repo,
@@ -82,7 +82,7 @@ func (uk *UrlsKeeper) GetShortURL(ctx context.Context, originalURL string) (stri
 func (uk *UrlsKeeper) DeleteAsync(ctx context.Context, userID string, shortURLs []string) {
 	go func() {
 		for _, shortURL := range shortURLs {
-			uk.deleteCh <- UrlForDelete{
+			uk.deleteCh <- URLForDelete{
 				shortURL: shortURL,
 				userID:   userID,
 			}
