@@ -8,4 +8,5 @@ var (
 	ErrConflict      = errors.New("conflict error")
 	ErrTokenNotValid = errors.New("token validation error")
 	ErrTokenNotFound = errors.New("token not found error")
+	ErrUrlIsDeleted  = errors.New("url is deleted error")
 )

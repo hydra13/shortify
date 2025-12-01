@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/hydra13/shortify/internal/config"
+	"github.com/hydra13/shortify/internal/models"
 )
 
 type UrlsKeeper interface {
@@ -29,12 +30,22 @@ func CreateHandler(urlsKeeper UrlsKeeper, log zerolog.Logger) http.HandlerFunc {
 		key := r.URL.Path[1:]
 		url, found, err := urlsKeeper.Get(r.Context(), key)
 		if err != nil {
-			log.Error().
-				Err(err).
-				Str("short_url_key", key).
-				Msg("GetLongUrlHandler: error get url from repository")
+			switch err {
+			case models.ErrUrlIsDeleted:
+				log.Debug().
+					Str("short_url_key", key).
+					Msg("GetLongUrlHandler: error get deleted url")
 
-			w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(http.StatusGone)
+			default:
+				log.Error().
+					Err(err).
+					Str("short_url_key", key).
+					Msg("GetLongUrlHandler: error get url from repository")
+
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+
 			return
 		}
 
