@@ -115,3 +115,23 @@ func (r *InMemoryDB) Delete(_ context.Context, shortURL string) error {
 
 	return nil
 }
+
+func (r *InMemoryDB) DeleteBatch(ctx context.Context, deleteBatch map[string][]string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for userID, ids := range deleteBatch {
+		for _, shortURL := range ids {
+			record, found := r.repository[shortURL]
+
+			if !found {
+				continue
+			}
+
+			if record.UserID != userID {
+				continue
+			}
+
+			r.Delete(ctx, shortURL)
+		}
+	}
+}

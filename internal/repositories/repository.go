@@ -9,6 +9,8 @@ var (
 	ErrKeyNotFound    = errors.New("error: key not found")
 	ErrImplementation = errors.New("error: not implemented")
 	ErrConflict       = errors.New("error: conflict")
+	ErrForbidden      = errors.New("error: forbidden")
+	ErrNotAvailable   = errors.New("error: not available")
 )
 
 type Repository interface {
@@ -19,4 +21,5 @@ type Repository interface {
 	GetAllByUser(ctx context.Context, userID string) (map[string]string, error)
 	GetShortURL(ctx context.Context, originalURL string) (string, error)
 	Delete(ctx context.Context, key string) error
+	DeleteBatch(ctx context.Context, deleteBatch map[string][]string)
 }

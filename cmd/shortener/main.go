@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	_ "github.com/hydra13/shortify"
 	"github.com/hydra13/shortify/internal/config"
 	dbConfig "github.com/hydra13/shortify/internal/config/db"
+	deleteUrlsHandler "github.com/hydra13/shortify/internal/handlers/delete_user_urls_handler"
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
@@ -30,6 +32,9 @@ import (
 
 func main() {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	conf := config.NewConfig()
 	conf.ParseConfig()
@@ -51,7 +56,7 @@ func main() {
 
 	generator := gen.New()
 	urlValidator := validator.New()
-	uk := urlsKeeper.New(repo)
+	uk := urlsKeeper.New(ctx, repo)
 	s := shorter.New(urlValidator, uk, generator, conf.BaseURL, log)
 	auth := authService.New()
 
@@ -60,6 +65,7 @@ func main() {
 	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, auth, log)
 	getShortURLSBatchHandler := shortUrlsBatchHandler.CreateHandler(s, log)
 	getUserURLSHandler := userUrlsHandler.CreateHandler(uk, s, log)
+	deleteUserUrlsHandler := deleteUrlsHandler.CreateHandler(uk, log)
 
 	r := chi.NewRouter()
 
@@ -79,8 +85,13 @@ func main() {
 			r.Post("/", getShortURLbyJSONHandler)
 			r.Post("/batch", getShortURLSBatchHandler)
 		})
-		r.Get("/user/urls", getUserURLSHandler)
+		r.Route("/user/urls", func(r chi.Router) {
+			r.Get("/", getUserURLSHandler)
+			r.Delete("/", deleteUserUrlsHandler)
+		})
 	})
+
+	log.Debug().Msg("starting server at " + conf.ServerAddr)
 
 	log.Fatal().Err(http.ListenAndServe(conf.ServerAddr, r)).Msg("exit")
 }

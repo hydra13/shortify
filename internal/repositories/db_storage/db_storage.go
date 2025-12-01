@@ -99,16 +99,24 @@ func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string, use
 func (dbs *DBStorage) Get(ctx context.Context, key string) (string, error) {
 	row := dbs.db.QueryRowContext(
 		ctx,
-		"SELECT original_url FROM shortify_urls WHERE short_url = $1 LIMIT 1",
+		"SELECT original_url, is_deleted FROM shortify_urls WHERE short_url = $1 LIMIT 1",
 		key,
 	)
 
-	var originalURL string
-	if err := row.Scan(&originalURL); err != nil {
+	var (
+		originalURL string
+		isDeleted   bool
+	)
+
+	if err := row.Scan(&originalURL, &isDeleted); err != nil {
 		log.
 			Err(err).
 			Msg("DBStorage: error scanning row")
 		return "", err
+	}
+
+	if isDeleted {
+		return "", repository.ErrNotAvailable
 	}
 
 	return originalURL, nil
@@ -214,4 +222,26 @@ func (dbs *DBStorage) Delete(ctx context.Context, key string) error {
 			Msg("DBStorage: error deleting data from db")
 	}
 	return err
+}
+
+func (dbs *DBStorage) DeleteBatch(ctx context.Context, deleteBatch map[string][]string) {
+	tx, err := dbs.db.BeginTx(ctx, nil)
+	if err != nil {
+		return
+	}
+
+	for userID, shortURLs := range deleteBatch {
+		_, err = tx.ExecContext(
+			ctx,
+			"UPDATE shortify_urls SET is_deleted = true WHERE user_id = $1 AND short_url = ANY($2)",
+			userID,
+			shortURLs,
+		)
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+	}
+
+	tx.Commit()
 }

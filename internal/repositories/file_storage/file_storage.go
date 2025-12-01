@@ -65,3 +65,8 @@ func (fs *FileStorage) Delete(ctx context.Context, key string) error {
 
 	return fs.write(ctx)
 }
+
+func (fs *FileStorage) DeleteBatch(ctx context.Context, deleteBatch map[string][]string) {
+	fs.inMemory.DeleteBatch(ctx, deleteBatch)
+	fs.write(ctx)
+}

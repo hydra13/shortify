@@ -31,7 +31,7 @@ func CreateHandler(urlsKeeper UrlsKeeper, log zerolog.Logger) http.HandlerFunc {
 		url, found, err := urlsKeeper.Get(r.Context(), key)
 		if err != nil {
 			switch err {
-			case models.ErrUrlIsDeleted:
+			case models.ErrURLIsDeleted:
 				log.Debug().
 					Str("short_url_key", key).
 					Msg("GetLongUrlHandler: error get deleted url")

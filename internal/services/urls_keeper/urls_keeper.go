@@ -2,18 +2,33 @@ package urlskeeper
 
 import (
 	"context"
+	"time"
 
+	"github.com/hydra13/shortify/internal/models"
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
 
-type UrlsKeeper struct {
-	repo repository.Repository
+type UrlForDelete struct {
+	shortURL string
+	userID   string
 }
 
-func New(repo repository.Repository) *UrlsKeeper {
-	return &UrlsKeeper{
-		repo: repo,
+type UrlsKeeper struct {
+	repo     repository.Repository
+	deleteCh chan UrlForDelete
+}
+
+func New(ctx context.Context, repo repository.Repository) *UrlsKeeper {
+	deleteCh := make(chan UrlForDelete, 1024)
+
+	keeper := &UrlsKeeper{
+		repo:     repo,
+		deleteCh: deleteCh,
 	}
+
+	go keeper.Run(ctx)
+
+	return keeper
 }
 
 func (uk *UrlsKeeper) Save(ctx context.Context, originalURL, shortID, userID string) error {
@@ -42,6 +57,10 @@ func (uk *UrlsKeeper) Get(
 			return "", false, nil
 		}
 
+		if err == repository.ErrNotAvailable {
+			return "", false, models.ErrURLIsDeleted
+		}
+
 		return "", false, err
 	}
 
@@ -58,4 +77,36 @@ func (uk *UrlsKeeper) Delete(ctx context.Context, shortURL string) error {
 
 func (uk *UrlsKeeper) GetShortURL(ctx context.Context, originalURL string) (string, error) {
 	return uk.repo.GetShortURL(ctx, originalURL)
+}
+
+func (uk *UrlsKeeper) DeleteAsync(ctx context.Context, userID string, shortURLs []string) {
+	go func() {
+		for _, shortURL := range shortURLs {
+			uk.deleteCh <- UrlForDelete{
+				shortURL: shortURL,
+				userID:   userID,
+			}
+		}
+	}()
+}
+
+func (uk *UrlsKeeper) Run(ctx context.Context) {
+	t := time.NewTicker(time.Second * 10)
+	defer t.Stop()
+
+	deleteBatch := make(map[string][]string)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case url := <-uk.deleteCh:
+			deleteBatch[url.userID] = append(deleteBatch[url.userID], url.shortURL)
+		case <-t.C:
+			if len(deleteBatch) > 0 {
+				uk.repo.DeleteBatch(ctx, deleteBatch)
+				deleteBatch = make(map[string][]string)
+			}
+		}
+	}
 }
