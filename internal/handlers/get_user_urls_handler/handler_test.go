@@ -16,6 +16,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type wrapper struct {
+	h *Handler
+}
+
+func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	wr.h.Handle(w, r)
+}
+
 func TestGetUserUrlsHandler_CreateHandler(t *testing.T) {
 	var buf bytes.Buffer
 	log := zerolog.New(&buf)
@@ -96,9 +104,9 @@ func TestGetUserUrlsHandler_CreateHandler(t *testing.T) {
 			urlsKeeper := tt.urlsKeeper(mc)
 			shorter := tt.shorter(mc)
 
-			handler := CreateHandler(urlsKeeper, shorter, log)
+			handler := NewHandler(urlsKeeper, shorter, log)
 
-			srv := httptest.NewServer(handler)
+			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/user/urls", nil)

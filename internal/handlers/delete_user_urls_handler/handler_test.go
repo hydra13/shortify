@@ -65,7 +65,7 @@ func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 			keeper := tt.keeper(mc)
 
-			handler := CreateHandler(keeper, log)
+			handler := NewHandler(keeper, log)
 
 			ctx := authContext.CreateContextWithUserID(context.Background(), tt.userID, tt.isNewUser)
 
@@ -78,7 +78,7 @@ func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
 			require.NoError(t, err)
 
 			rr := httptest.NewRecorder()
-			handler.ServeHTTP(rr, req)
+			handler.Handle(rr, req)
 
 			assert.Equal(t, tt.wantCode, rr.Code)
 		})

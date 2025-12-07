@@ -60,12 +60,12 @@ func main() {
 	s := shorter.New(urlValidator, uk, generator, conf.BaseURL, log)
 	auth := authService.New()
 
-	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
-	getShortURLHandler := shortUrlHandler.CreateHandler(s, auth, log)
-	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, auth, log)
-	getShortURLSBatchHandler := shortUrlsBatchHandler.CreateHandler(s, log)
-	getUserURLSHandler := userUrlsHandler.CreateHandler(uk, s, log)
-	deleteUserUrlsHandler := deleteUrlsHandler.CreateHandler(uk, log)
+	getLongURLHandler := longUrlHandler.NewHandler(uk, log)
+	getShortURLHandler := shortUrlHandler.NewHandler(s, auth, log)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.NewHandler(s, auth, log)
+	getShortURLSBatchHandler := shortUrlsBatchHandler.NewHandler(s, log)
+	getUserURLSHandler := userUrlsHandler.NewHandler(uk, s, log)
+	deleteUserUrlsHandler := deleteUrlsHandler.NewHandler(uk, log)
 
 	r := chi.NewRouter()
 
@@ -73,21 +73,21 @@ func main() {
 	r.Use(logger.NewLoggerMiddleware(log))
 	r.Use(authMiddleware.NewAuthMiddleware(auth, log))
 
-	r.Post("/", getShortURLHandler)
+	r.Post("/", getShortURLHandler.Handle)
 	if dbInstance != nil {
-		pingHandler := ping.CreateHandler(dbInstance, log)
-		r.Get("/ping", pingHandler)
+		pingHandler := ping.NewHandler(dbInstance, log)
+		r.Get("/ping", pingHandler.Handle)
 	}
-	r.Get("/{id}", getLongURLHandler)
+	r.Get("/{id}", getLongURLHandler.Handle)
 
 	r.Route("/api/", func(r chi.Router) {
 		r.Route("/shorten", func(r chi.Router) {
-			r.Post("/", getShortURLbyJSONHandler)
-			r.Post("/batch", getShortURLSBatchHandler)
+			r.Post("/", getShortURLbyJSONHandler.Handle)
+			r.Post("/batch", getShortURLSBatchHandler.Handle)
 		})
 		r.Route("/user/urls", func(r chi.Router) {
-			r.Get("/", getUserURLSHandler)
-			r.Delete("/", deleteUserUrlsHandler)
+			r.Get("/", getUserURLSHandler.Handle)
+			r.Delete("/", deleteUserUrlsHandler.Handle)
 		})
 	})
 

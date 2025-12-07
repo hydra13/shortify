@@ -95,9 +95,9 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 
 			request := httptest.NewRequest(http.MethodGet, tt.url, nil)
 			w := httptest.NewRecorder()
-			handler := CreateHandler(keeper, log)
+			handler := NewHandler(keeper, log)
 
-			handler.ServeHTTP(w, request)
+			handler.Handle(w, request)
 
 			res := w.Result()
 			defer res.Body.Close()

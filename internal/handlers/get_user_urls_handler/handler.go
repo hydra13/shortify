@@ -24,36 +24,52 @@ type ResponseRecord struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func CreateHandler(urlsKeeper UrlsKeeper, shorter Shorter, log zerolog.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		userID, _ := authContext.GetUserIDFromContext(r.Context())
+type Handler struct {
+	urlsKeeper UrlsKeeper
+	shorter    Shorter
+	log        zerolog.Logger
+}
 
-		urls, err := urlsKeeper.GetAllByUser(r.Context(), userID)
-		if err != nil {
-			log.Error().
-				Str("user_id", userID).
-				Err(err).
-				Msg("GetUserURLsHandler: error get urls by user")
+func NewHandler(
+	urlsKeeper UrlsKeeper,
+	shorter Shorter,
+	log zerolog.Logger,
+) *Handler {
+	return &Handler{
+		urlsKeeper: urlsKeeper,
+		shorter:    shorter,
+		log:        log,
+	}
+}
 
-			w.WriteHeader(http.StatusInternalServerError)
+func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
+	userID, _ := authContext.GetUserIDFromContext(r.Context())
 
-			return
-		}
+	urls, err := h.urlsKeeper.GetAllByUser(r.Context(), userID)
+	if err != nil {
+		h.log.Error().
+			Str("user_id", userID).
+			Err(err).
+			Msg("GetUserURLsHandler: error get urls by user")
 
-		if len(urls) == 0 {
-			w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusInternalServerError)
 
-			return
-		}
+		return
+	}
 
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		err = json.NewEncoder(w).Encode(toResponse(shorter, urls))
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("GetUserURLsHandler: error encode response")
-		}
+	if len(urls) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(toResponse(h.shorter, urls))
+	if err != nil {
+		h.log.Error().
+			Err(err).
+			Msg("GetUserURLsHandler: error encode response")
 	}
 }
 

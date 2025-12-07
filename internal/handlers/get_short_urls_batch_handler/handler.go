@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/hydra13/shortify/internal/models"
 )
@@ -25,52 +26,65 @@ type ResponseRecord struct {
 	ShortURL      string `json:"short_url"`
 }
 
-func CreateHandler(shorter Shorter, log zerolog.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req []RequestRecord
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
-			log.Debug().
-				Err(err).
-				Msg("GetShortUrlsBatchHandler: error read request body")
+type Handler struct {
+	shorter Shorter
+	log     zerolog.Logger
+}
+
+func NewHandler(
+	shorter Shorter,
+	log zerolog.Logger,
+) *Handler {
+	return &Handler{
+		shorter: shorter,
+		log:     log,
+	}
+}
+
+func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
+	var req []RequestRecord
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		h.log.Debug().
+			Err(err).
+			Msg("GetShortUrlsBatchHandler: error read request body")
+
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	shortURLs, err := h.shorter.CreateBatch(r.Context(), toMap(req))
+	if err != nil {
+		switch err {
+		case models.ErrValidation:
+			h.log.Debug().
+				Interface("input_urls", req).
+				Msg("GetShortUrlsBatchHandler: validation error")
 
 			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		case models.ErrInternal:
+			h.log.Debug().
+				Interface("input_urls", req).
+				Msg("GetShortUrlsBatchHandler: save url into repository error")
 
-		shortURLs, err := shorter.CreateBatch(r.Context(), toMap(req))
-		if err != nil {
-			switch err {
-			case models.ErrValidation:
-				log.Debug().
-					Interface("input_urls", req).
-					Msg("GetShortUrlsBatchHandler: validation error")
-
-				w.WriteHeader(http.StatusBadRequest)
-			case models.ErrInternal:
-				log.Debug().
-					Interface("input_urls", req).
-					Msg("GetShortUrlsBatchHandler: save url into repository error")
-
-				w.WriteHeader(http.StatusInternalServerError)
-			default:
-				log.Error().
-					Interface("input_urls", req).
-					Err(err).
-					Msg("GetShortUrlsBatchHandler: unhandled error")
-			}
-
-			return
-		}
-
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		err = json.NewEncoder(w).Encode(toResponse(shortURLs))
-		if err != nil {
-			log.Error().
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			h.log.Error().
+				Interface("input_urls", req).
 				Err(err).
-				Msg("GetShortUrlsBatchHandler: error encode response")
+				Msg("GetShortUrlsBatchHandler: unhandled error")
 		}
+
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(toResponse(shortURLs))
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("GetShortUrlsBatchHandler: error encode response")
 	}
 }
 

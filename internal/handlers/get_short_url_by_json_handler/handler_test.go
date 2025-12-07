@@ -17,6 +17,14 @@ import (
 	"github.com/hydra13/shortify/internal/models"
 )
 
+type wrapper struct {
+	h *Handler
+}
+
+func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	wr.h.Handle(w, r)
+}
+
 func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 	var buf bytes.Buffer
 	log := zerolog.New(&buf)
@@ -91,8 +99,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			shorter := tt.shorter(mc)
 			auth := tt.auth(mc)
 
-			handler := CreateHandler(shorter, auth, log)
-			srv := httptest.NewServer(handler)
+			handler := NewHandler(shorter, auth, log)
+
+			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodPost, srv.URL+tt.url, strings.NewReader(tt.input))

@@ -29,65 +29,81 @@ type JSONResponse struct {
 	Result string `json:"result"`
 }
 
-func CreateHandler(shorter Shorter, auth AuthService, log zerolog.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req JSONRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
-			log.Debug().
-				Err(err).
-				Msg("GetShortUrlByJsonHandler: error read request body")
+type Handler struct {
+	shorter Shorter
+	auth    AuthService
+	log     zerolog.Logger
+}
 
-			w.WriteHeader(http.StatusBadRequest)
+func NewHandler(
+	shorter Shorter,
+	auth AuthService,
+	log zerolog.Logger,
+) *Handler {
+	return &Handler{
+		shorter: shorter,
+		auth:    auth,
+		log:     log,
+	}
+}
+
+func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
+	var req JSONRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		h.log.Debug().
+			Err(err).
+			Msg("GetShortUrlByJsonHandler: error read request body")
+
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	statusCode := http.StatusCreated
+	shortURL, err := h.shorter.Create(r.Context(), req.URL)
+	if err != nil {
+		if !errors.Is(err, models.ErrConflict) {
+			switch err {
+			case models.ErrValidation:
+				h.log.Debug().
+					Str("input_url", req.URL).
+					Msg("GetShortUrlByJsonHandler: validation error")
+
+				w.WriteHeader(http.StatusBadRequest)
+			case models.ErrInternal:
+				h.log.Debug().
+					Str("input_url", req.URL).
+					Msg("GetShortUrlByJsonHandler: save url into repository error")
+
+				w.WriteHeader(http.StatusInternalServerError)
+			default:
+				h.log.Error().
+					Str("input_url", req.URL).
+					Err(err).
+					Msg("GetShortUrlByJsonHandler: unhandled error")
+			}
+
 			return
 		}
 
-		statusCode := http.StatusCreated
-		shortURL, err := shorter.Create(r.Context(), req.URL)
-		if err != nil {
-			if !errors.Is(err, models.ErrConflict) {
-				switch err {
-				case models.ErrValidation:
-					log.Debug().
-						Str("input_url", req.URL).
-						Msg("GetShortUrlByJsonHandler: validation error")
+		h.log.Debug().
+			Str("input_url", req.URL).
+			Msg("GetShortUrlByJsonHandler: url already exist")
 
-					w.WriteHeader(http.StatusBadRequest)
-				case models.ErrInternal:
-					log.Debug().
-						Str("input_url", req.URL).
-						Msg("GetShortUrlByJsonHandler: save url into repository error")
-
-					w.WriteHeader(http.StatusInternalServerError)
-				default:
-					log.Error().
-						Str("input_url", req.URL).
-						Err(err).
-						Msg("GetShortUrlByJsonHandler: unhandled error")
-				}
-
-				return
-			}
-
-			log.Debug().
-				Str("input_url", req.URL).
-				Msg("GetShortUrlByJsonHandler: url already exist")
-
-			statusCode = http.StatusConflict
-		} else {
-			userID, isNew := authContext.GetUserIDFromContext(r.Context())
-			if isNew {
-				auth.SetAuthCookie(w, userID)
-			}
+		statusCode = http.StatusConflict
+	} else {
+		userID, isNew := authContext.GetUserIDFromContext(r.Context())
+		if isNew {
+			h.auth.SetAuthCookie(w, userID)
 		}
+	}
 
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		err = json.NewEncoder(w).Encode(JSONResponse{Result: shortURL})
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("GetShortUrlByJsonHandler: error encode response")
-		}
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	err = json.NewEncoder(w).Encode(JSONResponse{Result: shortURL})
+	if err != nil {
+		h.log.Error().
+			Err(err).
+			Msg("GetShortUrlByJsonHandler: error encode response")
 	}
 }

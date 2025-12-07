@@ -15,6 +15,14 @@ import (
 	"github.com/hydra13/shortify/internal/handlers/ping_handler/mocks"
 )
 
+type wrapper struct {
+	h *Handler
+}
+
+func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	wr.h.Handle(w, r)
+}
+
 func TestPingHanderl_CreateHandler(t *testing.T) {
 	var buf bytes.Buffer
 	log := zerolog.New(&buf)
@@ -61,9 +69,10 @@ func TestPingHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 
 			db := tt.db(mc)
-			handler := CreateHandler(db, log)
 
-			srv := httptest.NewServer(handler)
+			handler := NewHandler(db, log)
+
+			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
 
 			resp, err := http.Get(srv.URL)
