@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"os"
@@ -12,13 +13,17 @@ import (
 	_ "github.com/hydra13/shortify"
 	"github.com/hydra13/shortify/internal/config"
 	dbConfig "github.com/hydra13/shortify/internal/config/db"
+	deleteUrlsHandler "github.com/hydra13/shortify/internal/handlers/delete_user_urls_handler"
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
 	shortUrlHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_handler"
 	shortUrlsBatchHandler "github.com/hydra13/shortify/internal/handlers/get_short_urls_batch_handler"
+	userUrlsHandler "github.com/hydra13/shortify/internal/handlers/get_user_urls_handler"
 	ping "github.com/hydra13/shortify/internal/handlers/ping_handler"
+	authMiddleware "github.com/hydra13/shortify/internal/middlewares/auth"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
+	authService "github.com/hydra13/shortify/internal/services/auth"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
 	validator "github.com/hydra13/shortify/internal/services/url_validator"
@@ -27,6 +32,9 @@ import (
 
 func main() {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	conf := config.NewConfig()
 	conf.ParseConfig()
@@ -48,30 +56,42 @@ func main() {
 
 	generator := gen.New()
 	urlValidator := validator.New()
-	uk := urlsKeeper.New(repo)
+	uk := urlsKeeper.New(ctx, repo)
 	s := shorter.New(urlValidator, uk, generator, conf.BaseURL, log)
+	auth := authService.New()
 
-	getLongURLHandler := longUrlHandler.CreateHandler(uk, log)
-	getShortURLHandler := shortUrlHandler.CreateHandler(s, conf.BaseURL, log)
-	getShortURLbyJSONHandler := shortUrlByJsonHandler.CreateHandler(s, conf.BaseURL, log)
-	getShortURLSBatchHandler := shortUrlsBatchHandler.CreateHandler(s, conf.BaseURL, log)
+	getLongURLHandler := longUrlHandler.NewHandler(uk, log)
+	getShortURLHandler := shortUrlHandler.NewHandler(s, auth, log)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.NewHandler(s, auth, log)
+	getShortURLSBatchHandler := shortUrlsBatchHandler.NewHandler(s, log)
+	getUserURLSHandler := userUrlsHandler.NewHandler(uk, s, log)
+	deleteUserUrlsHandler := deleteUrlsHandler.NewHandler(uk, log)
 
 	r := chi.NewRouter()
 
 	r.Use(compresser.CompresserMiddleware)
 	r.Use(logger.NewLoggerMiddleware(log))
+	r.Use(authMiddleware.NewAuthMiddleware(auth, log))
 
-	r.Post("/", getShortURLHandler)
+	r.Post("/", getShortURLHandler.Handle)
 	if dbInstance != nil {
-		pingHandler := ping.CreateHandler(dbInstance, log)
-		r.Get("/ping", pingHandler)
+		pingHandler := ping.NewHandler(dbInstance, log)
+		r.Get("/ping", pingHandler.Handle)
 	}
-	r.Get("/{id}", getLongURLHandler)
+	r.Get("/{id}", getLongURLHandler.Handle)
 
-	r.Route("/api/shorten", func(r chi.Router) {
-		r.Post("/", getShortURLbyJSONHandler)
-		r.Post("/batch", getShortURLSBatchHandler)
+	r.Route("/api/", func(r chi.Router) {
+		r.Route("/shorten", func(r chi.Router) {
+			r.Post("/", getShortURLbyJSONHandler.Handle)
+			r.Post("/batch", getShortURLSBatchHandler.Handle)
+		})
+		r.Route("/user/urls", func(r chi.Router) {
+			r.Get("/", getUserURLSHandler.Handle)
+			r.Delete("/", deleteUserUrlsHandler.Handle)
+		})
 	})
+
+	log.Debug().Msg("starting server at " + conf.ServerAddr)
 
 	log.Fatal().Err(http.ListenAndServe(conf.ServerAddr, r)).Msg("exit")
 }

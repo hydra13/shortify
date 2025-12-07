@@ -17,6 +17,14 @@ import (
 	"github.com/hydra13/shortify/internal/models"
 )
 
+type wrapper struct {
+	h *Handler
+}
+
+func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	wr.h.Handle(w, r)
+}
+
 func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 	var buf bytes.Buffer
 	log := zerolog.New(&buf)
@@ -30,6 +38,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 	tests := []struct {
 		name    string
 		shorter func(mc *minimock.Controller) Shorter
+		auth    func(mc *minimock.Controller) AuthService
 		url     string
 		input   string
 		want    want
@@ -43,6 +52,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 					Expect(minimock.AnyContext, "https://ya.ru").
 					Return("http://localhost:8080/testing1", nil)
 			},
+			auth: func(mc *minimock.Controller) AuthService {
+				return nil // mocks.NewAuthServiceMock(mc)
+			},
 			url:   "/api/shorten",
 			input: `{"url":"https://ya.ru"}`,
 			want: want{
@@ -54,6 +66,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 		{
 			name:    "Error when body is empty",
 			shorter: func(mc *minimock.Controller) Shorter { return mocks.NewShorterMock(mc) },
+			auth:    func(mc *minimock.Controller) AuthService { return nil }, // mocks.NewAuthServiceMock(mc) },
 			input:   "",
 			url:     "/api/shorten",
 			want: want{
@@ -69,6 +82,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 					Expect(minimock.AnyContext, "not-url").
 					Return("", models.ErrValidation)
 			},
+			auth:  func(mc *minimock.Controller) AuthService { return nil }, // mocks.NewAuthServiceMock(mc) },
 			input: `{"url":"not-url"}`,
 			url:   "/api/shorten",
 			want: want{
@@ -83,9 +97,11 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 
 			mc := minimock.NewController(t)
 			shorter := tt.shorter(mc)
+			auth := tt.auth(mc)
 
-			handler := CreateHandler(shorter, "http://localhost:8080", log)
-			srv := httptest.NewServer(handler)
+			handler := NewHandler(shorter, auth, log)
+
+			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
 
 			req, err := http.NewRequest(http.MethodPost, srv.URL+tt.url, strings.NewReader(tt.input))

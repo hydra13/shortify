@@ -46,7 +46,7 @@ func (fs *FileStorage) load() error {
 	ctx := context.Background()
 
 	for _, record := range records {
-		err := fs.inMemory.Add(ctx, record.ShortURL, record.OriginalURL)
+		err := fs.inMemory.Add(ctx, record.ShortURL, record.OriginalURL, record.UserID)
 		if err != nil {
 			fs.log.Error().
 				Err(err).

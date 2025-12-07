@@ -10,10 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hydra13/shortify/internal/models"
+	authContext "github.com/hydra13/shortify/internal/services/auth_context"
 	"github.com/hydra13/shortify/internal/services/shorter/mocks"
 )
 
 func TestShorter_Create(t *testing.T) {
+	ctx := authContext.CreateContextWithUserID(context.Background(), "user1", false)
 	var buf bytes.Buffer
 	log := zerolog.New(&buf)
 	zerolog.SetGlobalLevel(zerolog.Disabled)
@@ -47,7 +49,7 @@ func TestShorter_Create(t *testing.T) {
 			keeper: func(mc *minimock.Controller) UrlsKeeper {
 				return mocks.NewUrlsKeeperMock(mc).
 					SaveMock.
-					Expect(minimock.AnyContext, "https://ya.ru", "testing1").
+					Expect(minimock.AnyContext, "https://ya.ru", "testing1", "user1").
 					Return(nil)
 			},
 			long: "https://ya.ru",
@@ -99,7 +101,7 @@ func TestShorter_Create(t *testing.T) {
 			keeper: func(mc *minimock.Controller) UrlsKeeper {
 				return mocks.NewUrlsKeeperMock(mc).
 					SaveMock.
-					Expect(minimock.AnyContext, "https://google.com", "testing1").
+					Expect(minimock.AnyContext, "https://google.com", "testing1", "user1").
 					Return(models.ErrInternal)
 			},
 			long: "https://google.com",
@@ -116,7 +118,7 @@ func TestShorter_Create(t *testing.T) {
 			generator := tt.generator(mc)
 
 			s := New(validator, keeper, generator, baseURL, log)
-			got, gotErr := s.Create(context.Background(), tt.long)
+			got, gotErr := s.Create(ctx, tt.long)
 
 			if tt.err != nil {
 				assert.ErrorIs(t, gotErr, tt.err)
@@ -131,6 +133,7 @@ func TestShorter_Create(t *testing.T) {
 }
 
 func TestShorter_CreateBatch(t *testing.T) {
+	ctx := authContext.CreateContextWithUserID(context.Background(), "user2", false)
 	var buf bytes.Buffer
 	log := zerolog.New(&buf)
 	zerolog.SetGlobalLevel(zerolog.Disabled)
@@ -166,7 +169,7 @@ func TestShorter_CreateBatch(t *testing.T) {
 					SaveBatchMock.
 					Expect(minimock.AnyContext, map[string]string{
 						"testing1": "https://ya.ru",
-					}).
+					}, "user2").
 					Return(nil)
 			},
 			input: map[string]string{
@@ -228,7 +231,7 @@ func TestShorter_CreateBatch(t *testing.T) {
 					SaveBatchMock.
 					Expect(minimock.AnyContext, map[string]string{
 						"testing1": "https://google.com",
-					}).
+					}, "user2").
 					Return(models.ErrInternal)
 			},
 			input: map[string]string{
@@ -247,7 +250,7 @@ func TestShorter_CreateBatch(t *testing.T) {
 			generator := tt.generator(mc)
 
 			s := New(validator, keeper, generator, baseURL, log)
-			got, gotErr := s.CreateBatch(context.Background(), tt.input)
+			got, gotErr := s.CreateBatch(ctx, tt.input)
 
 			if tt.err != nil {
 				assert.ErrorIs(t, gotErr, tt.err)
