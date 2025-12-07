@@ -101,7 +101,7 @@ func TestGetUserUrlsHandler_CreateHandler(t *testing.T) {
 			srv := httptest.NewServer(handler)
 			defer srv.Close()
 
-			req, err := http.NewRequest("GET", srv.URL+"/api/user/urls", nil)
+			req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/user/urls", nil)
 			require.NoError(t, err)
 
 			resp, err := srv.Client().Do(req)
