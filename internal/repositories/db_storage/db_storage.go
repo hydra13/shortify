@@ -71,6 +71,7 @@ func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string, use
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
 	for shortURL, originalURL := range batch {
 		_, err = tx.ExecContext(
@@ -81,8 +82,6 @@ func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string, use
 			userID,
 		)
 		if err != nil {
-			tx.Rollback()
-
 			log.
 				Err(err).
 				Str("short_url", shortURL).
@@ -229,6 +228,7 @@ func (dbs *DBStorage) DeleteBatch(ctx context.Context, deleteBatch map[string][]
 	if err != nil {
 		return
 	}
+	defer tx.Rollback()
 
 	for userID, shortURLs := range deleteBatch {
 		_, err = tx.ExecContext(
@@ -238,7 +238,6 @@ func (dbs *DBStorage) DeleteBatch(ctx context.Context, deleteBatch map[string][]
 			shortURLs,
 		)
 		if err != nil {
-			tx.Rollback()
 			return
 		}
 	}
