@@ -39,6 +39,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 		name    string
 		shorter func(mc *minimock.Controller) Shorter
 		auth    func(mc *minimock.Controller) AuthService
+		audit   func(mc *minimock.Controller) AuditService
 		url     string
 		input   string
 		want    want
@@ -53,7 +54,13 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 					Return("http://localhost:8080/testing1", nil)
 			},
 			auth: func(mc *minimock.Controller) AuthService {
-				return nil // mocks.NewAuthServiceMock(mc)
+				return mocks.NewAuthServiceMock(mc)
+			},
+			audit: func(mc *minimock.Controller) AuditService {
+				return mocks.NewAuditServiceMock(mc).
+					PublishShortenEventMock.
+					Expect("https://ya.ru", "").
+					Return()
 			},
 			url:   "/api/shorten",
 			input: `{"url":"https://ya.ru"}`,
@@ -66,9 +73,12 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 		{
 			name:    "Error when body is empty",
 			shorter: func(mc *minimock.Controller) Shorter { return mocks.NewShorterMock(mc) },
-			auth:    func(mc *minimock.Controller) AuthService { return nil }, // mocks.NewAuthServiceMock(mc) },
-			input:   "",
-			url:     "/api/shorten",
+			auth:    func(mc *minimock.Controller) AuthService { return mocks.NewAuthServiceMock(mc) },
+			audit: func(mc *minimock.Controller) AuditService {
+				return mocks.NewAuditServiceMock(mc)
+			},
+			input: "",
+			url:   "/api/shorten",
 			want: want{
 				code: http.StatusBadRequest,
 			},
@@ -82,7 +92,10 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 					Expect(minimock.AnyContext, "not-url").
 					Return("", models.ErrValidation)
 			},
-			auth:  func(mc *minimock.Controller) AuthService { return nil }, // mocks.NewAuthServiceMock(mc) },
+			auth: func(mc *minimock.Controller) AuthService { return mocks.NewAuthServiceMock(mc) },
+			audit: func(mc *minimock.Controller) AuditService {
+				return mocks.NewAuditServiceMock(mc)
+			},
 			input: `{"url":"not-url"}`,
 			url:   "/api/shorten",
 			want: want{
@@ -98,8 +111,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 			shorter := tt.shorter(mc)
 			auth := tt.auth(mc)
+			audit := tt.audit(mc)
 
-			handler := NewHandler(shorter, auth, log)
+			handler := NewHandler(shorter, auth, audit, log)
 
 			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()

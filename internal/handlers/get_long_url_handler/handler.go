@@ -1,4 +1,4 @@
-//go:generate minimock -i .UrlsKeeper -o mocks -s _mock.go -g
+//go:generate minimock -i .UrlsKeeper,.AuditService -o mocks -s _mock.go -g
 package getlongurlhandler
 
 import (
@@ -9,21 +9,28 @@ import (
 
 	"github.com/hydra13/shortify/internal/config"
 	"github.com/hydra13/shortify/internal/models"
+	authContext "github.com/hydra13/shortify/internal/services/auth_context"
 )
 
 type UrlsKeeper interface {
 	Get(ctx context.Context, shortURL string) (url string, found bool, err error)
 }
 
-type Handler struct {
-	urlsKeeper UrlsKeeper
-	log        zerolog.Logger
+type AuditService interface {
+	PublishFollowEvent(longURL, userID string)
 }
 
-func NewHandler(urlsKeeper UrlsKeeper, log zerolog.Logger) *Handler {
+type Handler struct {
+	urlsKeeper   UrlsKeeper
+	auditService AuditService
+	log          zerolog.Logger
+}
+
+func NewHandler(urlsKeeper UrlsKeeper, auditService AuditService, log zerolog.Logger) *Handler {
 	return &Handler{
-		urlsKeeper: urlsKeeper,
-		log:        log,
+		urlsKeeper:   urlsKeeper,
+		auditService: auditService,
+		log:          log,
 	}
 }
 
@@ -68,6 +75,12 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	userID, isNew := authContext.GetUserIDFromContext(r.Context())
+	if isNew {
+		userID = ""
+	}
+	h.auditService.PublishFollowEvent(url, userID)
 
 	w.Header().Add("Location", url)
 	w.WriteHeader(http.StatusTemporaryRedirect)

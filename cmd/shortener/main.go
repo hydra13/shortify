@@ -23,6 +23,7 @@ import (
 	authMiddleware "github.com/hydra13/shortify/internal/middlewares/auth"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
+	auditService "github.com/hydra13/shortify/internal/services/audit"
 	authService "github.com/hydra13/shortify/internal/services/auth"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
@@ -59,10 +60,11 @@ func main() {
 	uk := urlsKeeper.New(ctx, repo)
 	s := shorter.New(urlValidator, uk, generator, conf.BaseURL, log)
 	auth := authService.New()
+	audit := auditService.New()
 
-	getLongURLHandler := longUrlHandler.NewHandler(uk, log)
-	getShortURLHandler := shortUrlHandler.NewHandler(s, auth, log)
-	getShortURLbyJSONHandler := shortUrlByJsonHandler.NewHandler(s, auth, log)
+	getLongURLHandler := longUrlHandler.NewHandler(uk, audit, log)
+	getShortURLHandler := shortUrlHandler.NewHandler(s, auth, audit, log)
+	getShortURLbyJSONHandler := shortUrlByJsonHandler.NewHandler(s, auth, audit, log)
 	getShortURLSBatchHandler := shortUrlsBatchHandler.NewHandler(s, log)
 	getUserURLSHandler := userUrlsHandler.NewHandler(uk, s, log)
 	deleteUserUrlsHandler := deleteUrlsHandler.NewHandler(uk, log)
