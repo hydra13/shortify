@@ -3,6 +3,8 @@ package audit
 import (
 	"sync"
 	"time"
+
+	"github.com/hydra13/shortify/internal/models"
 )
 
 const (
@@ -10,15 +12,8 @@ const (
 	EventTypeFollow  = "follow"
 )
 
-type Event struct {
-	Timestamp   int64  `json:"ts"`
-	Action      string `json:"action"`
-	UserID      string `json:"user_id"`
-	OriginalURL string `json:"original_url"`
-}
-
 type Subscriber interface {
-	Notify(event Event)
+	Handle(event models.Event)
 }
 
 type AuditService struct {
@@ -33,11 +28,11 @@ func New() *AuditService {
 	}
 }
 
-func (s *AuditService) publishEvent(event Event) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, sub := range s.subscribers {
-		go sub.Notify(event)
+func (as *AuditService) publishEvent(event models.Event) {
+	as.mu.Lock()
+	defer as.mu.Unlock()
+	for _, sub := range as.subscribers {
+		go sub.Handle(event)
 	}
 }
 
@@ -59,7 +54,7 @@ func (as *AuditService) Unsubscribe(subscriber Subscriber) {
 }
 
 func (as *AuditService) PublishShortenEvent(longURL string, userID string) {
-	as.publishEvent(Event{
+	as.publishEvent(models.Event{
 		Timestamp:   time.Now().Unix(),
 		Action:      EventTypeShorten,
 		UserID:      userID,
@@ -68,7 +63,7 @@ func (as *AuditService) PublishShortenEvent(longURL string, userID string) {
 }
 
 func (as *AuditService) PublishFollowEvent(longURL string, userID string) {
-	as.publishEvent(Event{
+	as.publishEvent(models.Event{
 		Timestamp:   time.Now().Unix(),
 		Action:      EventTypeFollow,
 		UserID:      userID,

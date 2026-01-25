@@ -24,6 +24,8 @@ import (
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
 	auditService "github.com/hydra13/shortify/internal/services/audit"
+	auditSaverService "github.com/hydra13/shortify/internal/services/audit_saver"
+	auditSenderService "github.com/hydra13/shortify/internal/services/audit_sender"
 	authService "github.com/hydra13/shortify/internal/services/auth"
 	gen "github.com/hydra13/shortify/internal/services/short_id_generator"
 	shorter "github.com/hydra13/shortify/internal/services/shorter"
@@ -61,6 +63,16 @@ func main() {
 	s := shorter.New(urlValidator, uk, generator, conf.BaseURL, log)
 	auth := authService.New()
 	audit := auditService.New()
+
+	if conf.AuditFile != "" {
+		auditSaver := auditSaverService.New(conf.AuditFile, log)
+		audit.Subscribe(auditSaver)
+	}
+
+	if conf.AuditURL != "" {
+		auditSender := auditSenderService.New(conf.AuditURL, log)
+		audit.Subscribe(auditSender)
+	}
 
 	getLongURLHandler := longUrlHandler.NewHandler(uk, audit, log)
 	getShortURLHandler := shortUrlHandler.NewHandler(s, auth, audit, log)
