@@ -42,3 +42,37 @@ func Test_Validate(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkValidate(b *testing.B) {
+	validator := New()
+	inputs := []string{
+		"https://www.ya.ru",
+		"://",
+		"",
+		"testing",
+	}
+
+	b.Run("validateByURL", func(b *testing.B) {
+		for b.Loop() {
+			for in := range inputs {
+				validator.validateByURL(inputs[in])
+			}
+		}
+	})
+
+	b.Run("validateByRegexp", func(b *testing.B) {
+		for b.Loop() {
+			for in := range inputs {
+				validator.validateByRegexp(inputs[in])
+			}
+		}
+	})
+
+	b.Run("validateByStringsAndURL", func(b *testing.B) {
+		for b.Loop() {
+			for in := range inputs {
+				validator.validateByStringsAndURL(inputs[in])
+			}
+		}
+	})
+}
