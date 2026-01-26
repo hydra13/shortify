@@ -1,7 +1,6 @@
 package getshorturlhandler
 
 import (
-	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,9 +25,6 @@ func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 	type want struct {
 		code        int
 		response    string
@@ -122,7 +118,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			auth := tt.auth(mc)
 			audit := tt.audit(mc)
 
-			handler := NewHandler(shorter, auth, audit, log)
+			handler := NewHandler(shorter, auth, audit, zerolog.Nop())
 
 			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
@@ -146,5 +142,4 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

@@ -1,7 +1,6 @@
 package getlongurlhandler
 
 import (
-	"bytes"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -15,9 +14,6 @@ import (
 )
 
 func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 	type want struct {
 		code     int
 		location string
@@ -107,7 +103,7 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 
 			request := httptest.NewRequest(http.MethodGet, tt.url, nil)
 			w := httptest.NewRecorder()
-			handler := NewHandler(keeper, audit, log)
+			handler := NewHandler(keeper, audit, zerolog.Nop())
 
 			handler.Handle(w, request)
 
@@ -122,5 +118,4 @@ func TestGetLongUrlHanderl_CreateHandler(t *testing.T) {
 			}
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

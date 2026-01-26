@@ -1,7 +1,6 @@
 package shorter
 
 import (
-	"bytes"
 	"context"
 	"testing"
 
@@ -16,9 +15,6 @@ import (
 
 func TestShorter_Create(t *testing.T) {
 	ctx := authContext.CreateContextWithUserID(context.Background(), "user1", false)
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 
 	baseURL := "http://localhost:8080"
 
@@ -117,7 +113,7 @@ func TestShorter_Create(t *testing.T) {
 			keeper := tt.keeper(mc)
 			generator := tt.generator(mc)
 
-			s := New(validator, keeper, generator, baseURL, log)
+			s := New(validator, keeper, generator, baseURL, zerolog.Nop())
 			got, gotErr := s.Create(ctx, tt.long)
 
 			if tt.err != nil {
@@ -129,14 +125,10 @@ func TestShorter_Create(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }
 
 func TestShorter_CreateBatch(t *testing.T) {
 	ctx := authContext.CreateContextWithUserID(context.Background(), "user2", false)
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 
 	baseURL := "http://localhost:8080"
 
@@ -249,7 +241,7 @@ func TestShorter_CreateBatch(t *testing.T) {
 			keeper := tt.keeper(mc)
 			generator := tt.generator(mc)
 
-			s := New(validator, keeper, generator, baseURL, log)
+			s := New(validator, keeper, generator, baseURL, zerolog.Nop())
 			got, gotErr := s.CreateBatch(ctx, tt.input)
 
 			if tt.err != nil {
@@ -261,5 +253,4 @@ func TestShorter_CreateBatch(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

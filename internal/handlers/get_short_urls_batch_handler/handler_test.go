@@ -1,7 +1,6 @@
 package getshorturlsbatchhandler
 
 import (
-	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,9 +25,6 @@ func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 	type want struct {
 		code        int
 		response    string
@@ -100,7 +96,7 @@ func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 			shorter := tt.shorter(mc)
 
-			handler := NewHandler(shorter, log)
+			handler := NewHandler(shorter, zerolog.Nop())
 
 			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
@@ -124,5 +120,4 @@ func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

@@ -1,7 +1,6 @@
 package deleteuserurlshandler
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -18,10 +17,6 @@ import (
 )
 
 func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-
 	tests := []struct {
 		name      string
 		keeper    func(mc *minimock.Controller) UrlsKeeper
@@ -65,7 +60,7 @@ func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 			keeper := tt.keeper(mc)
 
-			handler := NewHandler(keeper, log)
+			handler := NewHandler(keeper, zerolog.Nop())
 
 			ctx := authContext.CreateContextWithUserID(context.Background(), tt.userID, tt.isNewUser)
 
@@ -83,5 +78,4 @@ func TestGetShortUrlsBatchHanderl_CreateHandler(t *testing.T) {
 			assert.Equal(t, tt.wantCode, rr.Code)
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

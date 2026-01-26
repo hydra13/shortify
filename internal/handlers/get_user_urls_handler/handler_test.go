@@ -1,7 +1,6 @@
 package getuserurlshandler
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -25,9 +24,6 @@ func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestGetUserUrlsHandler_CreateHandler(t *testing.T) {
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 	type want struct {
 		code        int
 		response    string
@@ -104,7 +100,7 @@ func TestGetUserUrlsHandler_CreateHandler(t *testing.T) {
 			urlsKeeper := tt.urlsKeeper(mc)
 			shorter := tt.shorter(mc)
 
-			handler := NewHandler(urlsKeeper, shorter, log)
+			handler := NewHandler(urlsKeeper, shorter, zerolog.Nop())
 
 			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
@@ -128,5 +124,4 @@ func TestGetUserUrlsHandler_CreateHandler(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

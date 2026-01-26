@@ -1,7 +1,6 @@
 package pinghandler
 
 import (
-	"bytes"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -24,10 +23,6 @@ func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestPingHanderl_CreateHandler(t *testing.T) {
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-
 	tests := []struct {
 		name       string
 		db         func(mc *minimock.Controller) DB
@@ -70,7 +65,7 @@ func TestPingHanderl_CreateHandler(t *testing.T) {
 
 			db := tt.db(mc)
 
-			handler := NewHandler(db, log)
+			handler := NewHandler(db, zerolog.Nop())
 
 			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
