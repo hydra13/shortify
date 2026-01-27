@@ -180,3 +180,13 @@ Dropped 2 nodes (cum <= 1.42MB)
          0     0% 34.80%     0.50MB  0.18%  runtime.systemstack
          0     0% 34.80%    -0.50MB  0.18%  runtime.wakep
 ```
+
+## Форматирование
+Установка goimports:
+```
+go install golang.org/x/tools/cmd/goimports@latest
+```
+Использование:
+```
+goimports -local "github.com/hydra13/shortify" -w main.go
+```
