@@ -1,3 +1,4 @@
+// Package audit - модуль работы с событиями аудита.
 package audit
 
 import (
@@ -16,6 +17,7 @@ type Subscriber interface {
 	Handle(event models.Event)
 }
 
+// AuditService реализует pub/sub паттерн для публикации событий аудита.
 type AuditService struct {
 	mu          sync.Locker
 	subscribers []Subscriber

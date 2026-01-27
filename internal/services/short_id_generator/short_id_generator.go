@@ -15,6 +15,8 @@ func New() *Generator {
 	return &Generator{}
 }
 
+// GenerateShortID генерирует короткий ID для переданной строки.
+// использует SHA256 хэширование и кодирование в base64.
 func (g Generator) GenerateShortID(url string) string {
 	hash := sha256.Sum256([]byte(fmt.Sprintf("%v-%v", url, time.Now())))
 	encoded := base64.URLEncoding.EncodeToString(hash[:])

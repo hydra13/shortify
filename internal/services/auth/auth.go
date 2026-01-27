@@ -66,6 +66,7 @@ func (a *AuthService) generateUserID() string {
 	return uuid.New().String()
 }
 
+// BuildJWTString создает JWT токен и возвращает его строковое представление
 func (a *AuthService) BuildJWTString(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{

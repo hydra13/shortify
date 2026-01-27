@@ -1,6 +1,7 @@
 package urlvalidator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -75,4 +76,18 @@ func BenchmarkValidate(b *testing.B) {
 			}
 		}
 	})
+}
+
+func ExampleURLValidator_Validate() {
+	validator := New()
+
+	result := validator.Validate("https://www.ya.ru") // return true
+	fmt.Println(result)
+
+	result = validator.Validate("://ya.ru") // return false
+	fmt.Println(result)
+
+	// Output:
+	// true
+	// false
 }
