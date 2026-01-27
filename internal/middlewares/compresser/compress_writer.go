@@ -1,8 +1,9 @@
 package compresser
 
 import (
-	"compress/gzip"
 	"net/http"
+
+	"github.com/klauspost/compress/gzip"
 )
 
 type compressWriter struct {
