@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/rs/zerolog"
 
@@ -83,29 +84,46 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Use(compresser.CompresserMiddleware)
-	r.Use(logger.NewLoggerMiddleware(log))
-	r.Use(authMiddleware.NewAuthMiddleware(auth, log))
+	r.Group(func(r chi.Router) {
+		r.Use(compresser.CompresserMiddleware)
+		r.Use(logger.NewLoggerMiddleware(log))
+		r.Use(authMiddleware.NewAuthMiddleware(auth, log))
 
-	r.Post("/", getShortURLHandler.Handle)
-	if dbInstance != nil {
-		pingHandler := ping.NewHandler(dbInstance, log)
-		r.Get("/ping", pingHandler.Handle)
-	}
-	r.Get("/{id}", getLongURLHandler.Handle)
+		r.Post("/", getShortURLHandler.Handle)
+		if dbInstance != nil {
+			pingHandler := ping.NewHandler(dbInstance, log)
+			r.Get("/ping", pingHandler.Handle)
+		}
+		r.Get("/{id}", getLongURLHandler.Handle)
 
-	r.Route("/api/", func(r chi.Router) {
-		r.Route("/shorten", func(r chi.Router) {
-			r.Post("/", getShortURLbyJSONHandler.Handle)
-			r.Post("/batch", getShortURLSBatchHandler.Handle)
-		})
-		r.Route("/user/urls", func(r chi.Router) {
-			r.Get("/", getUserURLSHandler.Handle)
-			r.Delete("/", deleteUserUrlsHandler.Handle)
+		r.Route("/api/", func(r chi.Router) {
+			r.Route("/shorten", func(r chi.Router) {
+				r.Post("/", getShortURLbyJSONHandler.Handle)
+				r.Post("/batch", getShortURLSBatchHandler.Handle)
+			})
+			r.Route("/user/urls", func(r chi.Router) {
+				r.Get("/", getUserURLSHandler.Handle)
+				r.Delete("/", deleteUserUrlsHandler.Handle)
+			})
 		})
 	})
+
+	if conf.ProfilerEnabled {
+		go startPprof(log)
+	}
 
 	log.Debug().Msg("starting server at " + conf.ServerAddr)
 
 	log.Fatal().Err(http.ListenAndServe(conf.ServerAddr, r)).Msg("exit")
+}
+
+func startPprof(log zerolog.Logger) {
+	// доступ только с localhost
+	localAddr := "127.0.0.1:6060"
+
+	r := chi.NewRouter()
+	r.Mount("/debug", middleware.Profiler())
+
+	log.Debug().Msg("starting pprof at " + localAddr)
+	log.Fatal().Err(http.ListenAndServe(localAddr, r)).Msg("pprof exit")
 }

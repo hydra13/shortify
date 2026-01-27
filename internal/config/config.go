@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"os"
+	"strconv"
 )
 
 type Mode int
@@ -22,6 +23,7 @@ type Config struct {
 	CurrentMode     Mode
 	AuditFile       string
 	AuditURL        string
+	ProfilerEnabled bool
 }
 
 func NewConfig() *Config {
@@ -33,6 +35,7 @@ func NewConfig() *Config {
 		CurrentMode:     ModeInMemory,
 		AuditFile:       "",
 		AuditURL:        "",
+		ProfilerEnabled: false,
 	}
 }
 
@@ -79,6 +82,7 @@ func (c *Config) ParseConfig() {
 	})
 	flag.StringVar(&c.AuditFile, "audit-file", "", "audit file")
 	flag.StringVar(&c.AuditURL, "audit-url", "", "audit url")
+	flag.BoolVar(&c.ProfilerEnabled, "profiler", false, "run profiler")
 
 	flag.Parse()
 
@@ -112,5 +116,12 @@ func (c *Config) ParseConfig() {
 
 	if auditURL, ok := os.LookupEnv("AUDIT_URL"); ok {
 		c.AuditURL = auditURL
+	}
+
+	if profilerEnabledStr, ok := os.LookupEnv("PROFILER"); ok {
+		profilerEnabled, err := strconv.ParseBool(profilerEnabledStr)
+		if err == nil {
+			c.ProfilerEnabled = profilerEnabled
+		}
 	}
 }
