@@ -20,20 +20,20 @@ type Subscriber interface {
 // AuditService реализует pub/sub паттерн для публикации событий аудита.
 type AuditService struct {
 	mu          sync.Locker
-	subscribers []Subscriber
+	subscribers map[Subscriber]struct{}
 }
 
 func New() *AuditService {
 	return &AuditService{
 		mu:          &sync.Mutex{},
-		subscribers: make([]Subscriber, 0),
+		subscribers: make(map[Subscriber]struct{}),
 	}
 }
 
 func (as *AuditService) publishEvent(event models.Event) {
 	as.mu.Lock()
 	defer as.mu.Unlock()
-	for _, sub := range as.subscribers {
+	for sub := range as.subscribers {
 		go sub.Handle(event)
 	}
 }
@@ -41,18 +41,15 @@ func (as *AuditService) publishEvent(event models.Event) {
 func (as *AuditService) Subscribe(subscriber Subscriber) {
 	as.mu.Lock()
 	defer as.mu.Unlock()
-	as.subscribers = append(as.subscribers, subscriber)
+
+	as.subscribers[subscriber] = struct{}{}
 }
 
 func (as *AuditService) Unsubscribe(subscriber Subscriber) {
 	as.mu.Lock()
 	defer as.mu.Unlock()
-	for i, s := range as.subscribers {
-		if s == subscriber {
-			as.subscribers = append(as.subscribers[:i], as.subscribers[i+1:]...)
-			break
-		}
-	}
+
+	delete(as.subscribers, subscriber)
 }
 
 func (as *AuditService) PublishShortenEvent(longURL string, userID string) {
