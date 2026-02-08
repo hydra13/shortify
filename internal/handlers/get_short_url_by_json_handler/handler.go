@@ -1,4 +1,4 @@
-//go:generate minimock -i .Shorter,.AuthService -o mocks -s _mock.go -g
+//go:generate minimock -i .Shorter,.AuthService,.AuditService -o mocks -s _mock.go -g
 package getshorturlbyjsonhandler
 
 import (
@@ -21,6 +21,10 @@ type AuthService interface {
 	SetAuthCookie(w http.ResponseWriter, userID string)
 }
 
+type AuditService interface {
+	PublishShortenEvent(longURL, userID string)
+}
+
 type JSONRequest struct {
 	URL string `json:"url"`
 }
@@ -32,17 +36,20 @@ type JSONResponse struct {
 type Handler struct {
 	shorter Shorter
 	auth    AuthService
+	audit   AuditService
 	log     zerolog.Logger
 }
 
 func NewHandler(
 	shorter Shorter,
 	auth AuthService,
+	audit AuditService,
 	log zerolog.Logger,
 ) *Handler {
 	return &Handler{
 		shorter: shorter,
 		auth:    auth,
+		audit:   audit,
 		log:     log,
 	}
 }
@@ -96,6 +103,8 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		if isNew {
 			h.auth.SetAuthCookie(w, userID)
 		}
+
+		h.audit.PublishShortenEvent(req.URL, userID)
 	}
 
 	w.Header().Add("Content-Type", "application/json")

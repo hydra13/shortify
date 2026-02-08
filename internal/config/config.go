@@ -1,8 +1,14 @@
+// Модуль конфигурации сервиса.
+//
+// Конфигурировать сервис можно при помощи флагов и переменных окружения, напимер:
+//
+//	PROFILER_ENABLED=true go run cmd/shortener/main.go -a :8080
 package config
 
 import (
 	"flag"
 	"os"
+	"strconv"
 )
 
 type Mode int
@@ -20,6 +26,9 @@ type Config struct {
 	DatabaseDSN     string
 	DatabaseDriver  string
 	CurrentMode     Mode
+	AuditFile       string
+	AuditURL        string
+	ProfilerEnabled bool
 }
 
 func NewConfig() *Config {
@@ -29,6 +38,9 @@ func NewConfig() *Config {
 		DatabaseDSN:     "postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable",
 		DatabaseDriver:  "pgx",
 		CurrentMode:     ModeInMemory,
+		AuditFile:       "",
+		AuditURL:        "",
+		ProfilerEnabled: false,
 	}
 }
 
@@ -73,6 +85,9 @@ func (c *Config) ParseConfig() {
 
 		return nil
 	})
+	flag.StringVar(&c.AuditFile, "audit-file", "", "audit file")
+	flag.StringVar(&c.AuditURL, "audit-url", "", "audit url")
+	flag.BoolVar(&c.ProfilerEnabled, "profiler", false, "run profiler")
 
 	flag.Parse()
 
@@ -97,6 +112,21 @@ func (c *Config) ParseConfig() {
 
 		if c.CurrentMode <= ModeDBStorage {
 			c.CurrentMode = ModeDBStorage
+		}
+	}
+
+	if auditFile, ok := os.LookupEnv("AUDIT_FILE"); ok {
+		c.AuditFile = auditFile
+	}
+
+	if auditURL, ok := os.LookupEnv("AUDIT_URL"); ok {
+		c.AuditURL = auditURL
+	}
+
+	if profilerEnabledStr, ok := os.LookupEnv("PROFILER"); ok {
+		profilerEnabled, err := strconv.ParseBool(profilerEnabledStr)
+		if err == nil {
+			c.ProfilerEnabled = profilerEnabled
 		}
 	}
 }

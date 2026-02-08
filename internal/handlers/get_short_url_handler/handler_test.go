@@ -1,7 +1,6 @@
 package getshorturlhandler
 
 import (
-	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,9 +25,6 @@ func (wr *wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
-	var buf bytes.Buffer
-	log := zerolog.New(&buf)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 	type want struct {
 		code        int
 		response    string
@@ -39,6 +35,7 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 		name    string
 		shorter func(mc *minimock.Controller) Shorter
 		auth    func(mc *minimock.Controller) AuthService
+		audit   func(mc *minimock.Controller) AuditService
 		url     string
 		input   string
 		want    want
@@ -54,6 +51,12 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			},
 			auth: func(mc *minimock.Controller) AuthService {
 				return mocks.NewAuthServiceMock(mc)
+			},
+			audit: func(mc *minimock.Controller) AuditService {
+				return mocks.NewAuditServiceMock(mc).
+					PublishShortenEventMock.
+					Expect("https://ya.ru", "").
+					Return()
 			},
 			url:   "/testing1",
 			input: "https://ya.ru",
@@ -74,6 +77,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			auth: func(mc *minimock.Controller) AuthService {
 				return mocks.NewAuthServiceMock(mc)
 			},
+			audit: func(mc *minimock.Controller) AuditService {
+				return mocks.NewAuditServiceMock(mc)
+			},
 			input: "",
 			url:   "/",
 			want: want{
@@ -92,6 +98,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			auth: func(mc *minimock.Controller) AuthService {
 				return mocks.NewAuthServiceMock(mc)
 			},
+			audit: func(mc *minimock.Controller) AuditService {
+				return mocks.NewAuditServiceMock(mc)
+			},
 			input: "not-url",
 			url:   "/",
 			want: want{
@@ -107,8 +116,9 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			mc := minimock.NewController(t)
 			shorter := tt.shorter(mc)
 			auth := tt.auth(mc)
+			audit := tt.audit(mc)
 
-			handler := NewHandler(shorter, auth, log)
+			handler := NewHandler(shorter, auth, audit, zerolog.Nop())
 
 			srv := httptest.NewServer(&wrapper{h: handler})
 			defer srv.Close()
@@ -132,5 +142,4 @@ func TestGetShortUrlHanderl_CreateHandler(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }

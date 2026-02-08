@@ -1,8 +1,9 @@
 package compresser
 
 import (
-	"compress/gzip"
 	"io"
+
+	"github.com/klauspost/compress/gzip"
 )
 
 type compressReader struct {

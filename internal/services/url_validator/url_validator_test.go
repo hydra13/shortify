@@ -1,6 +1,7 @@
 package urlvalidator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,4 +42,52 @@ func Test_Validate(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func BenchmarkValidate(b *testing.B) {
+	validator := New()
+	inputs := []string{
+		"https://www.ya.ru",
+		"://",
+		"",
+		"testing",
+	}
+
+	b.Run("validateByURL", func(b *testing.B) {
+		for b.Loop() {
+			for in := range inputs {
+				validator.validateByURL(inputs[in])
+			}
+		}
+	})
+
+	b.Run("validateByRegexp", func(b *testing.B) {
+		for b.Loop() {
+			for in := range inputs {
+				validator.validateByRegexp(inputs[in])
+			}
+		}
+	})
+
+	b.Run("validateByStringsAndURL", func(b *testing.B) {
+		for b.Loop() {
+			for in := range inputs {
+				validator.validateByStringsAndURL(inputs[in])
+			}
+		}
+	})
+}
+
+func ExampleURLValidator_Validate() {
+	validator := New()
+
+	result := validator.Validate("https://www.ya.ru") // return true
+	fmt.Println(result)
+
+	result = validator.Validate("://ya.ru") // return false
+	fmt.Println(result)
+
+	// Output:
+	// true
+	// false
 }
