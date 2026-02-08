@@ -190,3 +190,15 @@ go install golang.org/x/tools/cmd/goimports@latest
 ```
 goimports -local "github.com/hydra13/shortify" -w main.go
 ```
+
+## Документация
+Установка godoc:
+```
+go install -v golang.org/x/tools/cmd/godoc@latest
+```
+Запуск:
+```
+godoc -http=:8080
+```
+После выполнения этой команды в корне проекта, документация будет доступна по адресу:
+http://localhost:8080/pkg/github.com/hydra13/shortify/?m=all

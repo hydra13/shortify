@@ -1,3 +1,8 @@
+// Модуль конфигурации сервиса.
+//
+// Конфигурировать сервис можно при помощи флагов и переменных окружения, напимер:
+//
+//	PROFILER_ENABLED=true go run cmd/shortener/main.go -a :8080
 package config
 
 import (

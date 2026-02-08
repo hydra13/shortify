@@ -1,4 +1,4 @@
-// Package urlvalidator - валидатор URL.
+// Модуль валидации URL
 package urlvalidator
 
 import (
@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+// URLValidator представляет собой сервис для валидации URL.
+//
+// Пример использования:
+//
+//	validator := urlvalidator.New()
+//	isValid := validator.Validate("https://example.com")
 type URLValidator struct{}
 
 func New() *URLValidator {
