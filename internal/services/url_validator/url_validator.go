@@ -13,14 +13,23 @@ import (
 //
 //	validator := urlvalidator.New()
 //	isValid := validator.Validate("https://example.com")
-type URLValidator struct{}
+type URLValidator struct {
+	re *regexp.Regexp
+}
 
 func New() *URLValidator {
-	return &URLValidator{}
+	v := &URLValidator{}
+
+	re, err := regexp.Compile(`http[s]?://[\w\.]+`)
+	if err == nil {
+		v.re = re
+	}
+
+	return v
 }
 
 func (uv URLValidator) Validate(str string) bool {
-	return uv.validateByStringsAndURL(str)
+	return uv.validateByRegexp(str)
 }
 
 // validateByURL валидация с помощью встроенной библиотеки url.
@@ -32,12 +41,11 @@ func (uv URLValidator) validateByURL(str string) bool {
 
 // validateByRegexp валидация с помощью regexp.
 func (uv URLValidator) validateByRegexp(str string) bool {
-	matched, err := regexp.MatchString(`http[s]?://[\w\.]+`, str)
-	if err != nil {
+	if uv.re == nil {
 		return false
 	}
 
-	return matched
+	return uv.re.MatchString(str)
 }
 
 // validateByStringsAndURL оптимизированная версия валидации с комбинированием strings и url.
