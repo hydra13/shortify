@@ -1,5 +1,6 @@
 package models
 
+// generate:reset
 type Event struct {
 	Timestamp   int64  `json:"ts"`
 	Action      string `json:"action"`
