@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -34,7 +35,20 @@ import (
 	urlsKeeper "github.com/hydra13/shortify/internal/services/urls_keeper"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
+func printBuildInfo() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+}
+
 func main() {
+	printBuildInfo()
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	ctx, cancel := context.WithCancel(context.Background())
