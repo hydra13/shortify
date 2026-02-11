@@ -144,6 +144,10 @@ func handleStructFields(st *ast.StructType) []string {
 	resetFields := make([]string, 0)
 
 	for _, f := range st.Fields.List {
+		if len(f.Names) == 0 {
+			continue
+		}
+
 		fieldName := f.Names[0].Name
 
 		var resetRow string
