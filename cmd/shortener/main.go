@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -53,6 +57,9 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
 	conf := config.NewConfig()
 	conf.ParseConfig()
@@ -122,22 +129,62 @@ func main() {
 		})
 	})
 
-	if conf.ProfilerEnabled {
-		go startPprof(log)
+	wg := sync.WaitGroup{}
+
+	mainServer := &http.Server{
+		Addr:    conf.ServerAddr,
+		Handler: r,
 	}
 
-	log.Debug().Msg("starting server at " + conf.ServerAddr)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	log.Fatal().Err(http.ListenAndServe(conf.ServerAddr, r)).Msg("exit")
-}
+		log.Debug().Msg("starting server at " + conf.ServerAddr)
+		if err := mainServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("server error")
+		}
+	}()
 
-func startPprof(log zerolog.Logger) {
-	// доступ только с localhost
-	localAddr := "127.0.0.1:6060"
+	var pprofServer *http.Server
+	if conf.ProfilerEnabled {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			localAddr := "127.0.0.1:6060"
+			r := chi.NewRouter()
+			r.Mount("/debug", middleware.Profiler())
 
-	r := chi.NewRouter()
-	r.Mount("/debug", middleware.Profiler())
+			pprofServer = &http.Server{
+				Addr:    localAddr,
+				Handler: r,
+			}
 
-	log.Debug().Msg("starting pprof at " + localAddr)
-	log.Fatal().Err(http.ListenAndServe(localAddr, r)).Msg("pprof exit")
+			log.Debug().Msg("starting pprof at " + localAddr)
+			if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Error().Err(err).Msg("pprof server error")
+			}
+		}()
+	}
+
+	<-exit
+	log.Info().Msg("shutting down...")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := mainServer.Shutdown(shutdownCtx); err != nil {
+		log.Error().Err(err).Msg("main server shutdown error")
+	}
+
+	if pprofServer != nil {
+		if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+			log.Error().Err(err).Msg("pprof server shutdown error")
+		}
+	}
+
+	cancel()
+
+	wg.Wait()
+	log.Info().Msg("shutdown complete")
 }
