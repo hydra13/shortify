@@ -6,6 +6,7 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"strconv"
@@ -20,31 +21,70 @@ const (
 )
 
 type Config struct {
-	ServerAddr      string
-	BaseURL         string
-	FileStoragePath string
-	DatabaseDSN     string
+	ServerAddr      string `json:"server_address"`
+	BaseURL         string `json:"base_url"`
+	FileStoragePath string `json:"file_storage_path"`
+	DatabaseDSN     string `json:"database_dsn"`
 	DatabaseDriver  string
 	CurrentMode     Mode
 	AuditFile       string
 	AuditURL        string
 	ProfilerEnabled bool
-	HTTPSEnabled    bool
-	CertFile        string
-	KeyFile         string
+	HTTPSEnabled    bool   `json:"enable_https"`
+	CertFile        string `json:"cert_file"`
+	KeyFile         string `json:"key_file"`
 }
 
 func NewConfig() *Config {
-	return &Config{
+	conf := &Config{
 		BaseURL:         "http://localhost:8080",
 		FileStoragePath: "./storage.json",
 		DatabaseDSN:     "postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable",
 		DatabaseDriver:  "pgx",
 		CurrentMode:     ModeInMemory,
 	}
+
+	conf.ParseConfig()
+
+	return conf
 }
 
 func (c *Config) ParseConfig() {
+	configFile := c.getConfigFile()
+	if configFile != "" {
+		c.parseConfigFile(configFile)
+	}
+	c.ParseFlags()
+	c.ParseEnv()
+}
+
+func (c *Config) getConfigFile() string {
+	configFile := ""
+
+	for i, arg := range os.Args {
+		if arg == "-c" || arg == "-config" && len(os.Args) > i+1 {
+			configFile = os.Args[i+1]
+			break
+		}
+	}
+
+	if envValue, ok := os.LookupEnv("CONFIG"); ok {
+		configFile = envValue
+	}
+
+	return configFile
+}
+
+func (c *Config) parseConfigFile(configFile string) {
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		return
+	}
+
+	json.Unmarshal(data, c)
+}
+
+func (c *Config) ParseFlags() {
 	flag.StringVar(&c.ServerAddr, "a", ":8080", "server address")
 	flag.Func("f", "file storage path (default: \"./storage.json\")", func(path string) error {
 		if len(path) == 0 {
@@ -91,7 +131,9 @@ func (c *Config) ParseConfig() {
 	flag.BoolVar(&c.HTTPSEnabled, "s", false, "enable https")
 
 	flag.Parse()
+}
 
+func (c *Config) ParseEnv() {
 	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
 		c.ServerAddr = addr
 	}

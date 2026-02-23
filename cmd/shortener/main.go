@@ -62,7 +62,6 @@ func main() {
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
 	conf := config.NewConfig()
-	conf.ParseConfig()
 
 	dbInstance, err := sql.Open(conf.DatabaseDriver, conf.DatabaseDSN)
 	if err != nil {
