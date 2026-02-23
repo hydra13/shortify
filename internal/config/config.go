@@ -30,6 +30,8 @@ type Config struct {
 	AuditURL        string
 	ProfilerEnabled bool
 	HTTPSEnabled    bool
+	CertFile        string
+	KeyFile         string
 }
 
 func NewConfig() *Config {
@@ -39,10 +41,6 @@ func NewConfig() *Config {
 		DatabaseDSN:     "postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable",
 		DatabaseDriver:  "pgx",
 		CurrentMode:     ModeInMemory,
-		AuditFile:       "",
-		AuditURL:        "",
-		ProfilerEnabled: false,
-		HTTPSEnabled:    false,
 	}
 }
 
@@ -135,6 +133,14 @@ func (c *Config) ParseConfig() {
 	if httpsEnabledStr, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
 		if httpsEnabled, err := strconv.ParseBool(httpsEnabledStr); err == nil {
 			c.HTTPSEnabled = httpsEnabled
+
+			if certFile, ok := os.LookupEnv("CERT_FILE"); ok {
+				c.CertFile = certFile
+			}
+
+			if keyFile, ok := os.LookupEnv("KEY_FILE"); ok {
+				c.KeyFile = keyFile
+			}
 		}
 	}
 }

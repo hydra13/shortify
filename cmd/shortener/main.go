@@ -141,8 +141,16 @@ func main() {
 		defer wg.Done()
 
 		log.Debug().Msg("starting server at " + conf.ServerAddr)
-		if err := mainServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error().Err(err).Msg("server error")
+		if conf.HTTPSEnabled && conf.CertFile != "" && conf.KeyFile != "" {
+			log.Debug().Msg("HTTPS enabled")
+
+			if err := mainServer.ListenAndServeTLS(conf.CertFile, conf.KeyFile); err != nil && err != http.ErrServerClosed {
+				log.Error().Err(err).Msg("server error")
+			}
+		} else {
+			if err := mainServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Error().Err(err).Msg("server error")
+			}
 		}
 	}()
 
