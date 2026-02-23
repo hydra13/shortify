@@ -29,6 +29,7 @@ type Config struct {
 	AuditFile       string
 	AuditURL        string
 	ProfilerEnabled bool
+	HTTPSEnabled    bool
 }
 
 func NewConfig() *Config {
@@ -41,6 +42,7 @@ func NewConfig() *Config {
 		AuditFile:       "",
 		AuditURL:        "",
 		ProfilerEnabled: false,
+		HTTPSEnabled:    false,
 	}
 }
 
@@ -88,6 +90,7 @@ func (c *Config) ParseConfig() {
 	flag.StringVar(&c.AuditFile, "audit-file", "", "audit file")
 	flag.StringVar(&c.AuditURL, "audit-url", "", "audit url")
 	flag.BoolVar(&c.ProfilerEnabled, "profiler", false, "run profiler")
+	flag.BoolVar(&c.HTTPSEnabled, "s", false, "enable https")
 
 	flag.Parse()
 
@@ -124,9 +127,14 @@ func (c *Config) ParseConfig() {
 	}
 
 	if profilerEnabledStr, ok := os.LookupEnv("PROFILER"); ok {
-		profilerEnabled, err := strconv.ParseBool(profilerEnabledStr)
-		if err == nil {
+		if profilerEnabled, err := strconv.ParseBool(profilerEnabledStr); err == nil {
 			c.ProfilerEnabled = profilerEnabled
+		}
+	}
+
+	if httpsEnabledStr, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
+		if httpsEnabled, err := strconv.ParseBool(httpsEnabledStr); err == nil {
+			c.HTTPSEnabled = httpsEnabled
 		}
 	}
 }
