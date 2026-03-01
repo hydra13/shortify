@@ -55,14 +55,10 @@ func main() {
 	printBuildInfo()
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
 
 	conf := config.NewConfig()
-	conf.ParseConfig()
 
 	dbInstance, err := sql.Open(conf.DatabaseDriver, conf.DatabaseDSN)
 	if err != nil {
@@ -141,8 +137,16 @@ func main() {
 		defer wg.Done()
 
 		log.Debug().Msg("starting server at " + conf.ServerAddr)
-		if err := mainServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error().Err(err).Msg("server error")
+		if conf.HTTPSEnabled && conf.CertFile != "" && conf.KeyFile != "" {
+			log.Debug().Msg("HTTPS enabled")
+
+			if err := mainServer.ListenAndServeTLS(conf.CertFile, conf.KeyFile); err != nil && err != http.ErrServerClosed {
+				log.Error().Err(err).Msg("server error")
+			}
+		} else {
+			if err := mainServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Error().Err(err).Msg("server error")
+			}
 		}
 	}()
 
@@ -167,7 +171,8 @@ func main() {
 		}()
 	}
 
-	<-exit
+	<-ctx.Done()
+	stop()
 	log.Info().Msg("shutting down...")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -182,8 +187,6 @@ func main() {
 			log.Error().Err(err).Msg("pprof server shutdown error")
 		}
 	}
-
-	cancel()
 
 	wg.Wait()
 	log.Info().Msg("shutdown complete")
