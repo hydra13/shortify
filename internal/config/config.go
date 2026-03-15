@@ -34,11 +34,13 @@ type Config struct {
 	CertFile        string `json:"cert_file"`
 	KeyFile         string `json:"key_file"`
 	TrustedSubnet   string `json:"trusted_subnet"`
+	GRPCServerAddr  string `json:"grpc_server_address"`
 }
 
 func NewConfig() *Config {
 	conf := &Config{
 		ServerAddr:      ":8080",
+		GRPCServerAddr:  ":9090",
 		BaseURL:         "http://localhost:8080",
 		FileStoragePath: "./storage.json",
 		DatabaseDSN:     "postgresql://postgres:postgres@localhost:5432/shortify_data?sslmode=disable",
@@ -88,6 +90,7 @@ func (c *Config) parseConfigFile(configFile string) {
 
 func (c *Config) ParseFlags() {
 	flag.StringVar(&c.ServerAddr, "a", c.ServerAddr, "server address")
+	flag.StringVar(&c.GRPCServerAddr, "g", c.GRPCServerAddr, "grpc server address")
 	flag.Func("f", "file storage path (default: \"./storage.json\")", func(path string) error {
 		if len(path) == 0 {
 			return nil
@@ -141,6 +144,10 @@ func (c *Config) ParseFlags() {
 func (c *Config) ParseEnv() {
 	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
 		c.ServerAddr = addr
+	}
+
+	if grpcAddr, ok := os.LookupEnv("GRPC_SERVER_ADDRESS"); ok {
+		c.GRPCServerAddr = grpcAddr
 	}
 
 	if url, ok := os.LookupEnv("BASE_URL"); ok {
