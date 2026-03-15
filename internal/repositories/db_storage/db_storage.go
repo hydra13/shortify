@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	repository "github.com/hydra13/shortify/internal/repositories"
 )
@@ -49,7 +48,7 @@ func (dbs *DBStorage) Add(ctx context.Context, shortURL string, originalURL stri
 			return repository.ErrConflict
 		}
 
-		log.
+		dbs.log.
 			Err(err).
 			Str("short_url", shortURL).
 			Str("original_url", originalURL).
@@ -82,7 +81,7 @@ func (dbs *DBStorage) AddBatch(ctx context.Context, batch map[string]string, use
 			userID,
 		)
 		if err != nil {
-			log.
+			dbs.log.
 				Err(err).
 				Str("short_url", shortURL).
 				Str("original_url", originalURL).
@@ -108,7 +107,7 @@ func (dbs *DBStorage) Get(ctx context.Context, key string) (string, error) {
 	)
 
 	if err := row.Scan(&originalURL, &isDeleted); err != nil {
-		log.
+		dbs.log.
 			Err(err).
 			Msg("DBStorage: error scanning row")
 		return "", err
@@ -136,7 +135,7 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]string, error) {
 		var shortURL, originalURL string
 
 		if err := rows.Scan(&shortURL, &originalURL); err != nil {
-			log.
+			dbs.log.
 				Err(err).
 				Msg("DBStorage: error scanning row from rows")
 
@@ -147,7 +146,7 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]string, error) {
 	}
 
 	if rows.Err() != nil {
-		log.
+		dbs.log.
 			Err(err).
 			Msg("DBStorage: error iterating over rows")
 		return nil, rows.Err()
@@ -172,7 +171,7 @@ func (dbs *DBStorage) GetAllByUser(ctx context.Context, userID string) (map[stri
 		var shortURL, originalURL string
 
 		if err := rows.Scan(&shortURL, &originalURL); err != nil {
-			log.
+			dbs.log.
 				Err(err).
 				Msg("DBStorage: error scanning row from rows")
 
@@ -183,7 +182,7 @@ func (dbs *DBStorage) GetAllByUser(ctx context.Context, userID string) (map[stri
 	}
 
 	if rows.Err() != nil {
-		log.
+		dbs.log.
 			Err(err).
 			Msg("DBStorage: error iterating over rows")
 		return nil, rows.Err()
@@ -201,7 +200,7 @@ func (dbs *DBStorage) GetShortURL(ctx context.Context, originalURL string) (stri
 
 	var shortURL string
 	if err := row.Scan(&shortURL); err != nil {
-		log.
+		dbs.log.
 			Err(err).
 			Msg("DBStorage: error scanning row with shortURL")
 		return "", err
@@ -216,7 +215,7 @@ func (dbs *DBStorage) Delete(ctx context.Context, key string) error {
 		key,
 	)
 	if err != nil {
-		log.
+		dbs.log.
 			Err(err).
 			Msg("DBStorage: error deleting data from db")
 	}
@@ -243,4 +242,19 @@ func (dbs *DBStorage) DeleteBatch(ctx context.Context, deleteBatch map[string][]
 	}
 
 	tx.Commit()
+}
+
+func (dbs *DBStorage) GetStats(ctx context.Context) (urls int, users int, err error) {
+	row := dbs.db.QueryRowContext(
+		ctx,
+		"SELECT COUNT(DISTINCT short_url) as urls, COUNT(DISTINCT user_id) as users FROM shortify_urls",
+	)
+	err = row.Scan(&urls, &users)
+	if err != nil {
+		dbs.log.
+			Err(err).
+			Msg("DBStorage: error scanning row with stats")
+	}
+
+	return
 }

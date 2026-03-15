@@ -22,4 +22,5 @@ type Repository interface {
 	GetShortURL(ctx context.Context, originalURL string) (string, error)
 	Delete(ctx context.Context, key string) error
 	DeleteBatch(ctx context.Context, deleteBatch map[string][]string)
+	GetStats(ctx context.Context) (urls int, users int, err error)
 }

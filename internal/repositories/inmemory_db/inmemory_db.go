@@ -135,3 +135,18 @@ func (r *InMemoryDB) DeleteBatch(ctx context.Context, deleteBatch map[string][]s
 		}
 	}
 }
+
+func (r *InMemoryDB) GetStats(_ context.Context) (urls int, users int, err error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	urls = len(r.repository)
+
+	usersSet := make(map[string]bool)
+	for _, record := range r.repository {
+		usersSet[record.UserID] = true
+	}
+	users = len(usersSet)
+
+	return
+}
