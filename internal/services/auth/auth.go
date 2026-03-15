@@ -83,6 +83,11 @@ func (a *AuthService) BuildJWTString(userID string) (string, error) {
 	return tokenString, nil
 }
 
+// GetUserIDFromToken извлекает userID из JWT токена (для gRPC)
+func (a *AuthService) GetUserIDFromToken(tokenString string) (string, error) {
+	return a.getUserIDFromToken(tokenString)
+}
+
 func (a *AuthService) getUserIDFromToken(tokenString string) (string, error) {
 	claims := &Claims{}
 
