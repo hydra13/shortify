@@ -26,9 +26,11 @@ import (
 	shortUrlsBatchHandler "github.com/hydra13/shortify/internal/handlers/get_short_urls_batch_handler"
 	userUrlsHandler "github.com/hydra13/shortify/internal/handlers/get_user_urls_handler"
 	ping "github.com/hydra13/shortify/internal/handlers/ping_handler"
+	statsHandler "github.com/hydra13/shortify/internal/handlers/stats_handler"
 	authMiddleware "github.com/hydra13/shortify/internal/middlewares/auth"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
+	trustedSubnetMiddleware "github.com/hydra13/shortify/internal/middlewares/trusted_subnet"
 	auditService "github.com/hydra13/shortify/internal/services/audit"
 	auditSaverService "github.com/hydra13/shortify/internal/services/audit_saver"
 	auditSenderService "github.com/hydra13/shortify/internal/services/audit_sender"
@@ -99,12 +101,24 @@ func main() {
 	getUserURLSHandler := userUrlsHandler.NewHandler(uk, s, log)
 	deleteUserUrlsHandler := deleteUrlsHandler.NewHandler(uk, log)
 
+	trustedSubnetMW, err := trustedSubnetMiddleware.NewTrustedSubnetMiddleware(conf.TrustedSubnet, log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create trusted subnet middleware")
+	}
+
+	statsH := statsHandler.NewHandler(repo, log)
+
 	r := chi.NewRouter()
 
 	r.Group(func(r chi.Router) {
 		r.Use(compresser.CompresserMiddleware)
 		r.Use(logger.NewLoggerMiddleware(log))
 		r.Use(authMiddleware.NewAuthMiddleware(auth, log))
+
+		r.Route("/api/internal", func(r chi.Router) {
+			r.Use(trustedSubnetMW)
+			r.Get("/stats", statsH.Handle)
+		})
 
 		r.Post("/", getShortURLHandler.Handle)
 		if dbInstance != nil {
