@@ -244,3 +244,12 @@ func (dbs *DBStorage) DeleteBatch(ctx context.Context, deleteBatch map[string][]
 
 	tx.Commit()
 }
+
+func (dbs *DBStorage) GetStats(ctx context.Context) (urls int, users int, err error) {
+	row := dbs.db.QueryRowContext(
+		ctx,
+		"SELECT COUNT(DISTINCT short_url) as urls, COUNT(DISTINCT user_id) as users FROM shortify_urls",
+	)
+	err = row.Scan(&urls, &users)
+	return
+}

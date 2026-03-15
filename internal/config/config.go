@@ -33,6 +33,7 @@ type Config struct {
 	HTTPSEnabled    bool   `json:"enable_https"`
 	CertFile        string `json:"cert_file"`
 	KeyFile         string `json:"key_file"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 func NewConfig() *Config {
@@ -132,6 +133,7 @@ func (c *Config) ParseFlags() {
 	flag.BoolVar(&c.HTTPSEnabled, "s", c.HTTPSEnabled, "enable https")
 	flag.StringVar(&c.CertFile, "cert-file", c.CertFile, "cert file for https")
 	flag.StringVar(&c.KeyFile, "key-file", c.KeyFile, "key file for https")
+	flag.StringVar(&c.TrustedSubnet, "t", c.TrustedSubnet, "trusted subnet CIDR")
 
 	flag.Parse()
 }
@@ -187,5 +189,9 @@ func (c *Config) ParseEnv() {
 				c.KeyFile = keyFile
 			}
 		}
+	}
+
+	if trustedSubnet, ok := os.LookupEnv("TRUSTED_SUBNET"); ok {
+		c.TrustedSubnet = trustedSubnet
 	}
 }

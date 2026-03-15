@@ -70,3 +70,7 @@ func (fs *FileStorage) DeleteBatch(ctx context.Context, deleteBatch map[string][
 	fs.inMemory.DeleteBatch(ctx, deleteBatch)
 	fs.write(ctx)
 }
+
+func (fs *FileStorage) GetStats(ctx context.Context) (urls int, users int, err error) {
+	return fs.inMemory.GetStats(ctx)
+}
