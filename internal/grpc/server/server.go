@@ -1,4 +1,4 @@
-//go:generate minimock -i .Shorter,.UrlsKeeper,.AuditService -o mocks -s _mock.go -g
+//go:generate minimock -i .Shorter,.UrlsKeeper,.AuthService,.AuditService -o mocks -s _mock.go -g
 package grpcserver
 
 import (
@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/hydra13/shortify/api"
-	"github.com/hydra13/shortify/internal/services/auth"
 )
 
 type Shorter interface {
@@ -24,6 +23,10 @@ type UrlsKeeper interface {
 	GetAllByUser(ctx context.Context, userID string) (urls map[string]string, err error)
 }
 
+type AuthService interface {
+	GetUserIDFromToken(token string) (userID string, err error)
+}
+
 type AuditService interface {
 	PublishShortenEvent(longURL, userID string)
 	PublishFollowEvent(longURL, userID string)
@@ -33,7 +36,7 @@ type Server struct {
 	api.UnimplementedShortenerServiceServer
 	shorter    Shorter
 	urlsKeeper UrlsKeeper
-	auth       *auth.AuthService
+	auth       AuthService
 	audit      AuditService
 	log        zerolog.Logger
 }
@@ -41,7 +44,7 @@ type Server struct {
 func NewServer(
 	shorter Shorter,
 	urlsKeeper UrlsKeeper,
-	authService *auth.AuthService,
+	authService AuthService,
 	auditService AuditService,
 	log zerolog.Logger,
 ) *Server {
