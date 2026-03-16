@@ -228,17 +228,44 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
-	gServer.GracefulStop()
+	shutdownWg := sync.WaitGroup{}
 
-	if err := mainServer.Shutdown(shutdownCtx); err != nil {
-		log.Error().Err(err).Msg("main server shutdown error")
-	}
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		stopped := make(chan struct{})
+		go func() {
+			gServer.GracefulStop()
+			close(stopped)
+		}()
+		select {
+		case <-stopped:
+			log.Info().Msg("grpc server stopped gracefully")
+		case <-shutdownCtx.Done():
+			log.Warn().Msg("grpc graceful stop timed out, forcing stop")
+			gServer.Stop()
+		}
+	}()
+
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		if err := mainServer.Shutdown(shutdownCtx); err != nil {
+			log.Error().Err(err).Msg("main server shutdown error")
+		}
+	}()
 
 	if pprofServer != nil {
-		if err := pprofServer.Shutdown(shutdownCtx); err != nil {
-			log.Error().Err(err).Msg("pprof server shutdown error")
-		}
+		shutdownWg.Add(1)
+		go func() {
+			defer shutdownWg.Done()
+			if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+				log.Error().Err(err).Msg("pprof server shutdown error")
+			}
+		}()
 	}
+
+	shutdownWg.Wait()
 
 	wg.Wait()
 	log.Info().Msg("shutdown complete")
