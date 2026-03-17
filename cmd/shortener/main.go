@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,10 +16,13 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	_ "github.com/hydra13/shortify"
 	"github.com/hydra13/shortify/internal/config"
 	dbConfig "github.com/hydra13/shortify/internal/config/db"
+	grpcServer "github.com/hydra13/shortify/internal/grpc/server"
 	deleteUrlsHandler "github.com/hydra13/shortify/internal/handlers/delete_user_urls_handler"
 	longUrlHandler "github.com/hydra13/shortify/internal/handlers/get_long_url_handler"
 	shortUrlByJsonHandler "github.com/hydra13/shortify/internal/handlers/get_short_url_by_json_handler"
@@ -26,9 +30,11 @@ import (
 	shortUrlsBatchHandler "github.com/hydra13/shortify/internal/handlers/get_short_urls_batch_handler"
 	userUrlsHandler "github.com/hydra13/shortify/internal/handlers/get_user_urls_handler"
 	ping "github.com/hydra13/shortify/internal/handlers/ping_handler"
+	statsHandler "github.com/hydra13/shortify/internal/handlers/stats_handler"
 	authMiddleware "github.com/hydra13/shortify/internal/middlewares/auth"
 	"github.com/hydra13/shortify/internal/middlewares/compresser"
 	"github.com/hydra13/shortify/internal/middlewares/logger"
+	trustedSubnetMiddleware "github.com/hydra13/shortify/internal/middlewares/trusted_subnet"
 	auditService "github.com/hydra13/shortify/internal/services/audit"
 	auditSaverService "github.com/hydra13/shortify/internal/services/audit_saver"
 	auditSenderService "github.com/hydra13/shortify/internal/services/audit_sender"
@@ -98,6 +104,14 @@ func main() {
 	getShortURLSBatchHandler := shortUrlsBatchHandler.NewHandler(s, log)
 	getUserURLSHandler := userUrlsHandler.NewHandler(uk, s, log)
 	deleteUserUrlsHandler := deleteUrlsHandler.NewHandler(uk, log)
+	staticticsHandler := statsHandler.NewHandler(repo, log)
+
+	trustedSubnetMW, err := trustedSubnetMiddleware.NewTrustedSubnetMiddleware(conf.TrustedSubnet, log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create trusted subnet middleware")
+	}
+
+	grpcSrv := grpcServer.NewServer(s, uk, auth, audit, log)
 
 	r := chi.NewRouter()
 
@@ -105,6 +119,11 @@ func main() {
 		r.Use(compresser.CompresserMiddleware)
 		r.Use(logger.NewLoggerMiddleware(log))
 		r.Use(authMiddleware.NewAuthMiddleware(auth, log))
+
+		r.Route("/api/internal", func(r chi.Router) {
+			r.Use(trustedSubnetMW)
+			r.Get("/stats", staticticsHandler.Handle)
+		})
 
 		r.Post("/", getShortURLHandler.Handle)
 		if dbInstance != nil {
@@ -126,6 +145,37 @@ func main() {
 	})
 
 	wg := sync.WaitGroup{}
+
+	grpcListener, err := net.Listen("tcp", conf.GRPCServerAddr)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to listen grpc")
+	}
+
+	var gServer *grpc.Server
+	if conf.HTTPSEnabled && conf.CertFile != "" && conf.KeyFile != "" {
+		log.Debug().Msg("gRPC TLS enabled")
+
+		creds, err := credentials.NewServerTLSFromFile(conf.CertFile, conf.KeyFile)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to load grpc credentials")
+		}
+
+		gServer = grpc.NewServer(grpc.Creds(creds))
+	} else {
+		gServer = grpc.NewServer()
+	}
+
+	grpcSrv.Register(gServer)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		log.Debug().Msg("starting grpc server at " + conf.GRPCServerAddr)
+		if err := gServer.Serve(grpcListener); err != nil {
+			log.Error().Err(err).Msg("grpc server error")
+		}
+	}()
 
 	mainServer := &http.Server{
 		Addr:    conf.ServerAddr,
@@ -178,15 +228,44 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
-	if err := mainServer.Shutdown(shutdownCtx); err != nil {
-		log.Error().Err(err).Msg("main server shutdown error")
-	}
+	shutdownWg := sync.WaitGroup{}
+
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		stopped := make(chan struct{})
+		go func() {
+			gServer.GracefulStop()
+			close(stopped)
+		}()
+		select {
+		case <-stopped:
+			log.Info().Msg("grpc server stopped gracefully")
+		case <-shutdownCtx.Done():
+			log.Warn().Msg("grpc graceful stop timed out, forcing stop")
+			gServer.Stop()
+		}
+	}()
+
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		if err := mainServer.Shutdown(shutdownCtx); err != nil {
+			log.Error().Err(err).Msg("main server shutdown error")
+		}
+	}()
 
 	if pprofServer != nil {
-		if err := pprofServer.Shutdown(shutdownCtx); err != nil {
-			log.Error().Err(err).Msg("pprof server shutdown error")
-		}
+		shutdownWg.Add(1)
+		go func() {
+			defer shutdownWg.Done()
+			if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+				log.Error().Err(err).Msg("pprof server shutdown error")
+			}
+		}()
 	}
+
+	shutdownWg.Wait()
 
 	wg.Wait()
 	log.Info().Msg("shutdown complete")
